@@ -13,6 +13,7 @@ class Civilization:
         self.military = 5      # Reduced starting military
         self.technology = 1
         self.loyalty = 100  # New attribute: loyalty (0-100)
+        self.culture = 0  # New attribute: culture (0+)
         self.action_points = 5  # Base action points per turn
         self.current_action_points = 5  # Current available action points
 
@@ -35,7 +36,8 @@ class Civilization:
             "develop_technology": 2,  # Most expensive
             "build_military": 2,       # Expensive
             "grow_population": 1,      # Moderate
-            "gather_resources": 1      # Least expensive
+            "gather_resources": 1,     # Least expensive
+            "develop_culture": 1       # Moderate
         }
 
         # History tracking
@@ -86,6 +88,11 @@ class Civilization:
         base_resource_growth = int(self.population * 0.3)
         bonus_resource_growth = int(base_resource_growth * bonus)
         self.resources += max(5, base_resource_growth + bonus_resource_growth)
+        
+        # Culture grows naturally with population and era bonus
+        base_culture_growth = int(self.population * 0.1)
+        bonus_culture_growth = int(base_culture_growth * bonus)
+        self.culture += max(1, base_culture_growth + bonus_culture_growth)
 
         # Calculate resource consumption
         # Population consumes resources (1 resource per person)
@@ -235,6 +242,16 @@ Action Points: {self.current_action_points}/{self.action_points}
                 return f"Gathered resources +{gained} (AP: {action_cost}, limited to {actual_amount} due to population/technology constraints)"
             else:
                 return f"Gathered resources +{gained} (AP: {action_cost})"
+        
+        elif action_type == "develop_culture":
+            base_cost = amount * 10
+            cost = int(base_cost * (1 - cost_reduction))
+            if self.resources >= cost:
+                # Consume action points
+                self.current_action_points -= action_cost
+                self.resources -= cost
+                self.culture += amount
+                return f"Developed culture +{amount} (cost: {cost}, AP: {action_cost})"
 
         return "Action failed - insufficient resources"
 
@@ -248,9 +265,11 @@ Action Points: {self.current_action_points}/{self.action_points}
             "population": self.population,
             "military": self.military,
             "technology": self.technology,
+            "culture": self.culture,
             "loyalty": self.loyalty,
             "action_points": self.action_points,
-            "current_action_points": self.current_action_points
+            "current_action_points": self.current_action_points,
+            "color": self.color
         }
     
     def calculate_score(self):
@@ -266,6 +285,9 @@ Action Points: {self.current_action_points}/{self.action_points}
         
         # Military (20% weight)
         score += self.military * 2
+        
+        # Culture (10% weight)
+        score += self.culture * 0.2
         
         # Resources (10% weight)
         score += self.resources * 0.1
@@ -373,6 +395,36 @@ Action Points: {self.current_action_points}/{self.action_points}
         # Total military strength
         return self.military * era_multiplier
     
+    def apply_culture_influence(self, opponent):
+        """Apply culture influence on another civilization."""
+        # Calculate culture difference
+        culture_diff = self.culture - opponent.culture
+        
+        if culture_diff > 0:
+            # This civilization has higher culture
+            # Calculate influence based on culture difference
+            influence_strength = min(5, culture_diff // 100 + 1)  # Max 5 points of influence
+            
+            # Increase own loyalty
+            self.loyalty = min(100, self.loyalty + influence_strength)
+            
+            # Decrease opponent loyalty
+            opponent.loyalty = max(0, opponent.loyalty - influence_strength)
+            
+            # Absorb a small amount of population from opponent
+            # Only absorb if opponent has at least 10 population
+            if opponent.population >= 10:
+                absorbed_population = min(1, influence_strength // 2)  # At most 2 population per turn
+                opponent.population = max(0, opponent.population - absorbed_population)
+                self.population += absorbed_population
+                
+                return f"""{self.name}'s culture influenced {opponent.name}:
+  - {self.name} loyalty +{influence_strength}
+  - {opponent.name} loyalty -{influence_strength}
+  - Absorbed {absorbed_population} population from {opponent.name}"""
+        
+        return ""
+    
     def attack(self, opponent):
         """Attack another civilization and calculate battle results."""
         # Calculate military strength for both sides
@@ -423,7 +475,30 @@ Action Points: {self.current_action_points}/{self.action_points}
         plunder_population = actual_plunder_population
         
         # Update loyalty due to war
-        self.loyalty = max(0, self.loyalty - 5)
-        opponent.loyalty = max(0, opponent.loyalty - 10)
+        if winner == self:
+            # Attacker won
+            self.loyalty = max(0, self.loyalty + 5)  # Attacking and winning increases loyalty
+            opponent.loyalty = max(0, opponent.loyalty - 10)  # Losing decreases loyalty
+        elif winner == opponent:
+            # Attacker lost
+            self.loyalty = max(0, self.loyalty - 10)  # Attacking and losing decreases loyalty
+            opponent.loyalty = min(100, opponent.loyalty + 5)  # Defending and winning increases loyalty
+        else:
+            # Draw - both lose some loyalty
+            self.loyalty = max(0, self.loyalty - 5)
+            opponent.loyalty = max(0, opponent.loyalty - 5)
+        
+        # Plunder culture if there's a winner
+        if winner and loser:
+            # Calculate culture plunder (capped at 20% of loser's culture)
+            max_plunder_culture = int(loser.culture * 0.2)
+            plunder_culture = int(max_plunder_culture * plunder_factor)
+            actual_plunder_culture = min(plunder_culture, loser.culture)
+            
+            winner.culture += actual_plunder_culture
+            loser.culture -= actual_plunder_culture
+            
+            # Add culture plunder to return message
+            result += f" {winner.name} plundered {actual_plunder_culture} culture!"
         
         return result, plunder_resources, plunder_population

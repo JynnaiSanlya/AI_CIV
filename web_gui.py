@@ -14,7 +14,16 @@ game_state = {
     "civ1": None,
     "civ2": None,
     "game_ended": False,
-    "reason": ""
+    "reason": "",
+    "model_info": {
+        "civ1": "",
+        "civ2": ""
+    },
+    "action_history": {
+        "civ1": [],
+        "civ2": []
+    },
+    "diplomacy_history": []
 }
 
 # Game instance
@@ -141,8 +150,50 @@ HTML_TEMPLATE = """
         .resource-fill.population { background-color: #2ecc71; } /* Green */
         .resource-fill.military { background-color: #e74c3c; } /* Red */
         .resource-fill.technology { background-color: #f1c40f; } /* Yellow */
+        .resource-fill.culture { background-color: #9b59b6; } /* Purple */
         .resource-fill.loyalty { background-color: #e67e22; } /* Orange */
-        .resource-fill.action_points { background-color: #9b59b6; } /* Purple */
+        .resource-fill.action_points { background-color: #8e44ad; } /* Dark Purple */
+        
+        /* AI Model Display */
+        .ai-model {
+            font-size: 14px;
+            color: #95a5a6;
+            margin-bottom: 15px;
+        }
+        
+        /* Flag Display */
+        .civ-flag {
+            width: 30px;
+            height: 20px;
+            margin-right: 10px;
+            display: inline-block;
+            vertical-align: middle;
+            border-radius: 2px;
+        }
+        
+        /* Civ Image Improvements */
+        .civ-image {
+            width: 100%;
+            height: 150px;
+            background-color: #333;
+            margin-bottom: 20px;
+            border-radius: 5px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            color: #fff;
+            background-size: cover;
+            background-position: center;
+            position: relative;
+        }
+        
+        /* Era-specific images */
+        .era-primitive { background-image: url('https://via.placeholder.com/400x200/505050/ffffff?text=Campfire'); } /* Campfire */
+        .era-ancient { background-image: url('https://via.placeholder.com/400x200/8b4513/ffffff?text=Tent'); } /* Tent */
+        .era-medieval { background-image: url('https://via.placeholder.com/400x200/a52a2a/ffffff?text=Castle'); } /* Castle */
+        .era-modern { background-image: url('https://via.placeholder.com/400x200/d3d3d3/000000?text=City'); } /* City */
+        .era-future { background-image: url('https://via.placeholder.com/400x200/87ceeb/000000?text=Spaceship'); } /* Spaceship */
         
         .diplomacy {
             background-color: #2c2c2c;
@@ -195,6 +246,84 @@ HTML_TEMPLATE = """
         .action-trade { background-color: #00ffff; color: #000; } /* Cyan */
         .action-war { background-color: #ff0000; color: #fff; } /* Red */
         
+        /* Action History */
+        .action-history {
+            background-color: #2c2c2c;
+            border: 2px solid #444;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .action-history-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #4a90e2;
+        }
+        
+        .action-item {
+            background-color: #333;
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        
+        .action-item .turn {
+            color: #f39c12;
+            font-weight: bold;
+        }
+        
+        .action-item .action {
+            color: #3498db;
+        }
+        
+        /* Diplomacy History */
+        .diplomacy-history {
+            background-color: #2c2c2c;
+            border: 2px solid #444;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .diplomacy-history-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #4a90e2;
+        }
+        
+        .diplomacy-item {
+            background-color: #333;
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 10px;
+            font-size: 14px;
+        }
+        
+        .diplomacy-item .turn {
+            color: #f39c12;
+            font-weight: bold;
+        }
+        
+        .diplomacy-item.trade {
+            border-left: 4px solid #00ffff;
+        }
+        
+        .diplomacy-item.war {
+            border-left: 4px solid #ff0000;
+        }
+        
+        .diplomacy-item.war_declaration {
+            border-left: 4px solid #e67e22;
+        }
+        
         .game-over {
             text-align: center;
             font-size: 36px;
@@ -213,17 +342,27 @@ HTML_TEMPLATE = """
         
         <div class="civilizations">
             <div class="civ-panel" id="civ1-panel">
-                <div class="civ-name" id="civ1-name">Civilization 1</div>
+                <div class="civ-name" id="civ1-name"><div class="civ-flag" id="civ1-flag"></div>Civilization 1</div>
+                <div class="ai-model" id="civ1-model">AI Model: qwen-flash</div>
                 <div class="civ-era" id="civ1-era">Primitive</div>
                 <div class="civ-image" id="civ1-image">Campfire</div>
                 <div class="resources" id="civ1-resources"></div>
+                <div class="action-history">
+                    <div class="action-history-title">Recent Actions</div>
+                    <div id="civ1-action-history"></div>
+                </div>
             </div>
             
             <div class="civ-panel" id="civ2-panel">
-                <div class="civ-name" id="civ2-name">Civilization 2</div>
+                <div class="civ-name" id="civ2-name"><div class="civ-flag" id="civ2-flag"></div>Civilization 2</div>
+                <div class="ai-model" id="civ2-model">AI Model: qwen-plus</div>
                 <div class="civ-era" id="civ2-era">Primitive</div>
                 <div class="civ-image" id="civ2-image">Campfire</div>
                 <div class="resources" id="civ2-resources"></div>
+                <div class="action-history">
+                    <div class="action-history-title">Recent Actions</div>
+                    <div id="civ2-action-history"></div>
+                </div>
             </div>
         </div>
         
@@ -247,6 +386,11 @@ HTML_TEMPLATE = """
             </div>
         </div>
         
+        <div class="diplomacy-history">
+            <div class="diplomacy-history-title">Diplomacy History</div>
+            <div id="diplomacy-history-content"></div>
+        </div>
+        
         <div id="game-over" class="game-over" style="display: none;"></div>
     </div>
     
@@ -265,36 +409,39 @@ HTML_TEMPLATE = """
                     // Update turn
                     document.getElementById('turn').textContent = data.turn;
                     
-                    // Update civilization 1
-                    updateCivilization('civ1', data.civ1);
+                    // Update civilization 1 with model info and action history
+                    updateCivilization('civ1', data.civ1, data.model_info.civ1, data.action_history.civ1);
                     
-                    // Update civilization 2
-                    updateCivilization('civ2', data.civ2);
+                    // Update civilization 2 with model info and action history
+                    updateCivilization('civ2', data.civ2, data.model_info.civ2, data.action_history.civ2);
                     
                     // Update diplomacy icons
                     updateDiplomacyIcons(data.civ1, data.civ2);
+                    
+                    // Update diplomacy history
+                    updateDiplomacyHistory(data.diplomacy_history);
                 })
                 .catch(error => console.error('Error fetching game state:', error));
         }
         
         // Update a civilization's information
-        function updateCivilization(prefix, civ) {
-            document.getElementById(`${prefix}-name`).textContent = civ.name;
+        function updateCivilization(prefix, civ, modelName, actionHistory) {
+            // Update name with flag
+            const nameElement = document.getElementById(`${prefix}-name`);
+            nameElement.innerHTML = `<div class="civ-flag" id="${prefix}-flag"></div>${civ.name}`;
+            
+            // Update AI model
+            document.getElementById(`${prefix}-model`).textContent = `AI Model: ${modelName}`;
+            
+            // Update era
             document.getElementById(`${prefix}-era`).textContent = civ.era;
             
             // Update civilization image based on era
             const image = document.getElementById(`${prefix}-image`);
             image.className = `civ-image era-${civ.era.toLowerCase()}`;
             
-            // Update image text based on era
-            const eraText = {
-                'Primitive': 'Campfire',
-                'Ancient': 'Tent',
-                'Medieval': 'Wooden Hut',
-                'Modern': 'Small Buildings',
-                'Future': 'Skyscrapers'
-            };
-            image.textContent = eraText[civ.era] || civ.era;
+            // Update image text based on era (but hide it since we're using background images)
+            image.textContent = '';
             
             // Update resources
             const resourcesDiv = document.getElementById(`${prefix}-resources`);
@@ -306,6 +453,7 @@ HTML_TEMPLATE = """
                 { key: 'population', name: 'Population', max: 200, icon: '👥' },
                 { key: 'military', name: 'Military', max: 100, icon: '⚔️' },
                 { key: 'technology', name: 'Technology', max: 20, icon: '🔬' },
+                { key: 'culture', name: 'Culture', max: 200, icon: '🎭' },
                 { key: 'loyalty', name: 'Loyalty', max: 100, icon: '❤️' },
                 { key: 'current_action_points', name: 'Action Points', max: civ.action_points, icon: '⚡' }
             ];
@@ -325,6 +473,77 @@ HTML_TEMPLATE = """
                     <div class="resource-value">${value}/${maxValue}</div>
                 `;
                 resourcesDiv.appendChild(resourceDiv);
+            });
+            
+            // Update action history
+            updateActionHistory(prefix, actionHistory);
+            
+            // Update flag color
+            updateFlag(prefix, civ.color);
+        }
+        
+        // Update civilization flag color
+        function updateFlag(prefix, color) {
+            const flag = document.getElementById(`${prefix}-flag`);
+            flag.style.backgroundColor = color;
+        }
+        
+        // Update action history for a civilization
+        function updateActionHistory(prefix, actionHistory) {
+            const historyDiv = document.getElementById(`${prefix}-action-history`);
+            historyDiv.innerHTML = '';
+            
+            // Get last 5 turns of actions
+            const recentActions = actionHistory.slice(-5).reverse();
+            
+            recentActions.forEach(turnActions => {
+                const turnDiv = document.createElement('div');
+                turnDiv.className = 'action-item';
+                
+                let actionsHTML = `<div class="turn">Turn ${turnActions.turn}</div>`;
+                
+                turnActions.actions.forEach(action => {
+                    actionsHTML += `<div class="action">${action.action} ${action.amount}: ${action.result}</div>`;
+                });
+                
+                turnDiv.innerHTML = actionsHTML;
+                historyDiv.appendChild(turnDiv);
+            });
+        }
+        
+        // Update diplomacy history
+        function updateDiplomacyHistory(diplomacyHistory) {
+            const historyDiv = document.getElementById('diplomacy-history-content');
+            historyDiv.innerHTML = '';
+            
+            // Get last 10 diplomacy events
+            const recentEvents = diplomacyHistory.slice(-10).reverse();
+            
+            recentEvents.forEach(event => {
+                const eventDiv = document.createElement('div');
+                eventDiv.className = `diplomacy-item ${event.type}`;
+                
+                let eventHTML = `<div class="turn">Turn ${event.turn}</div>`;
+                
+                if (event.type === 'trade') {
+                    eventHTML += `<div>Trade: ${event.proposer} ↔ ${event.responder}</div>`;
+                    eventHTML += `<div>Offer: ${event.offer.resources} resources, ${event.offer.population} population, ${event.offer.technology} technology</div>`;
+                    eventHTML += `<div>Request: ${event.request.resources} resources, ${event.request.population} population, ${event.request.technology} technology</div>`;
+                    eventHTML += `<div>Result: ${event.result}</div>`;
+                } else if (event.type === 'war') {
+                    eventHTML += `<div>War: ${event.attacker} → ${event.defender}</div>`;
+                    eventHTML += `<div>Result: ${event.result}</div>`;
+                    eventHTML += `<div>Plunder: ${event.plunder.resources} resources, ${event.plunder.population} population</div>`;
+                } else if (event.type === 'war_declaration') {
+                    eventHTML += `<div>War Declaration: ${event.attacker} → ${event.defender}</div>`;
+                    eventHTML += `<div>Result: ${event.result}</div>`;
+                    if (event.reason) {
+                        eventHTML += `<div>Reason: ${event.reason}</div>`;
+                    }
+                }
+                
+                eventDiv.innerHTML = eventHTML;
+                historyDiv.appendChild(eventDiv);
             });
         }
         
@@ -390,6 +609,18 @@ def update_game_state():
             game_state["civ2"] = game.civ2.to_dict()
             game_state["game_ended"] = game.game_ended if hasattr(game, 'game_ended') else False
             game_state["reason"] = game.reason if hasattr(game, 'reason') else ""
+            
+            # Update model information
+            if hasattr(game, 'model_info'):
+                game_state["model_info"] = game.model_info
+            
+            # Update action history
+            if hasattr(game, 'action_history'):
+                game_state["action_history"] = game.action_history
+            
+            # Update diplomacy history
+            if hasattr(game, 'diplomacy_history'):
+                game_state["diplomacy_history"] = game.diplomacy_history
         
         time.sleep(1)  # Update game state every second
 
@@ -401,6 +632,22 @@ def run_game():
     # Add game ended flag to the game object
     game.game_ended = False
     game.reason = ""
+    
+    # Ensure model_info, action_history, and diplomacy_history are initialized
+    if not hasattr(game, 'model_info'):
+        game.model_info = {
+            "civ1": "qwen-flash",
+            "civ2": "qwen-plus"
+        }
+    
+    if not hasattr(game, 'action_history'):
+        game.action_history = {
+            "civ1": [],
+            "civ2": []
+        }
+    
+    if not hasattr(game, 'diplomacy_history'):
+        game.diplomacy_history = []
     
     try:
         for game.current_turn in range(1, game.max_turns + 1):

@@ -13,6 +13,7 @@ game_state_turn_*.json
 # Environment variables
 .env
 config.json
+config_me.json
 
 # IDE
 .vscode/

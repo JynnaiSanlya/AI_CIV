@@ -54,6 +54,7 @@ Available Actions:
 2. build_military [amount] - Recruit soldiers and build weapons. Resource Cost: amount * 15, Action Cost: 2
 3. grow_population [amount] - Support population growth. Resource Cost: amount * 10, Action Cost: 1
 4. gather_resources [amount] - Collect more resources. Resource Cost: 0, Action Cost: 1, Dynamic Limit: max(1, population // 10 + technology * 2)
+5. develop_culture [amount] - Develop cultural influence. Resource Cost: amount * 10, Action Cost: 1
 
 Rules:
 - You can choose multiple actions per turn (one per line)
@@ -129,7 +130,7 @@ Your Decision:
 
             # Extract all actions from response using regex
             actions = []
-            pattern = r'(develop_technology|build_military|grow_population|gather_resources)\s+(\d+)'
+            pattern = r'(develop_technology|build_military|grow_population|gather_resources|develop_culture)\s+(\d+)'
             matches = re.finditer(pattern, response_text)
             
             for match in matches:
