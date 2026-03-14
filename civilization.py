@@ -43,18 +43,25 @@ class Civilization:
         # History tracking
         self.history = []
 
-    def update_turn(self):
-        """Update civilization state for a new turn with resource consumption and loyalty."""
+    def update_turn(self, war_penalty=False):
+        """Update civilization state for a new turn with resource consumption and loyalty.
+        
+        Args:
+            war_penalty: Whether the civilization is under war penalty (halved growth)
+        """
         self.turn += 1
 
         # Update era-based action points
-        # Each new era adds 1 action point
+        # Every two new eras adds 1 action point
         era_action_points = {
-            "Primitive": 5,  # Base action points
-            "Ancient": 6,     # +1 for new era
-            "Medieval": 7,    # +2 for new era
-            "Modern": 8,      # +3 for new era
-            "Future": 9       # +4 for new era
+            "Primitive": 5,          # Base action points
+            "Classical": 5,          # Same as primitive
+            "Medieval": 6,           # +1 after 2 eras
+            "Renaissance": 6,        # Same as medieval
+            "Industrial": 7,         # +1 after 4 eras
+            "Modern": 7,             # Same as industrial
+            "Information": 8,        # +1 after 6 eras
+            "Future": 8              # Same as information
         }
         self.action_points = era_action_points.get(self.era, 5)
         
@@ -63,34 +70,44 @@ class Civilization:
 
         # Get era bonuses
         era_bonuses = {
-            "Primitive": 0.0,  # No bonus
-            "Ancient": 0.1,     # 10% bonus
-            "Medieval": 0.25,   # 25% bonus
-            "Modern": 0.5,      # 50% bonus
-            "Future": 1.0       # 100% bonus
+            "Primitive": 0.0,          # No bonus
+            "Classical": 0.05,          # 5% bonus
+            "Medieval": 0.15,           # 15% bonus
+            "Renaissance": 0.25,        # 25% bonus
+            "Industrial": 0.4,          # 40% bonus
+            "Modern": 0.6,              # 60% bonus
+            "Information": 0.8,         # 80% bonus
+            "Future": 1.0               # 100% bonus
         }
         bonus = era_bonuses.get(self.era, 0.0)
         
         # Fertility rate decreases with higher era (ancient societies have more children)
         fertility_rates = {
-            "Primitive": 0.07,   # 7% growth
-            "Ancient": 0.06,      # 6% growth
-            "Medieval": 0.05,     # 5% growth
-            "Modern": 0.02,       # 2% growth
-            "Future": 0.01        # 1% growth
+            "Primitive": 0.07,          # 7% growth
+            "Classical": 0.065,         # 6.5% growth
+            "Medieval": 0.055,          # 5.5% growth
+            "Renaissance": 0.05,        # 5% growth
+            "Industrial": 0.03,         # 3% growth
+            "Modern": 0.02,             # 2% growth
+            "Information": 0.015,       # 1.5% growth
+            "Future": 0.01              # 1% growth
         }
         fertility_rate = fertility_rates.get(self.era, 0.05)
         
+        # Apply war penalty if applicable (halve growth)
+        growth_multiplier = 0.5 if war_penalty else 1.0
+        
         # Natural growth with era-based fertility rate
-        self.population += max(1, int(self.population * fertility_rate))
+        population_growth = max(1, int(self.population * fertility_rate * growth_multiplier))
+        self.population += population_growth
         
         # Resources grow faster with higher era bonus
-        base_resource_growth = int(self.population * 0.3)
+        base_resource_growth = int(self.population * 0.3 * growth_multiplier)
         bonus_resource_growth = int(base_resource_growth * bonus)
         self.resources += max(5, base_resource_growth + bonus_resource_growth)
         
         # Culture grows naturally with population and era bonus
-        base_culture_growth = int(self.population * 0.1)
+        base_culture_growth = int(self.population * 0.1 * growth_multiplier)
         bonus_culture_growth = int(base_culture_growth * bonus)
         self.culture += max(1, base_culture_growth + bonus_culture_growth)
 
@@ -131,14 +148,20 @@ class Civilization:
             # If resources are 0, loyalty remains stable
         
         # Update era based on technology
-        if self.technology >= 15:
+        if self.technology >= 21:
             self.era = "Future"
-        elif self.technology >= 10:
+        elif self.technology >= 18:
+            self.era = "Information"
+        elif self.technology >= 15:
             self.era = "Modern"
-        elif self.technology >= 5:
+        elif self.technology >= 12:
+            self.era = "Industrial"
+        elif self.technology >= 9:
+            self.era = "Renaissance"
+        elif self.technology >= 6:
             self.era = "Medieval"
-        elif self.technology >= 2:
-            self.era = "Ancient"
+        elif self.technology >= 3:
+            self.era = "Classical"
         
         # Reset war count if era has changed
         if self.era != self.previous_era:
@@ -171,11 +194,14 @@ Action Points: {self.current_action_points}/{self.action_points}
         
         # Get era cost reduction bonuses (higher era = lower cost)
         era_cost_bonuses = {
-            "Primitive": 0.0,  # No cost reduction
-            "Ancient": 0.05,    # 5% cost reduction
-            "Medieval": 0.15,   # 15% cost reduction
-            "Modern": 0.3,      # 30% cost reduction
-            "Future": 0.5       # 50% cost reduction
+            "Primitive": 0.0,          # No cost reduction
+            "Classical": 0.025,        # 2.5% cost reduction
+            "Medieval": 0.05,          # 5% cost reduction
+            "Renaissance": 0.1,        # 10% cost reduction
+            "Industrial": 0.2,         # 20% cost reduction
+            "Modern": 0.3,             # 30% cost reduction
+            "Information": 0.4,        # 40% cost reduction
+            "Future": 0.5              # 50% cost reduction
         }
         cost_reduction = era_cost_bonuses.get(self.era, 0.0)
         
@@ -227,9 +253,12 @@ Action Points: {self.current_action_points}/{self.action_points}
             # Resource gathering is more efficient with higher era
             era_gain_bonus = {
                 "Primitive": 0.0,
-                "Ancient": 0.1,
-                "Medieval": 0.25,
-                "Modern": 0.5,
+                "Classical": 0.05,
+                "Medieval": 0.15,
+                "Renaissance": 0.25,
+                "Industrial": 0.4,
+                "Modern": 0.6,
+                "Information": 0.8,
                 "Future": 1.0
             }
             gain_bonus = era_gain_bonus.get(self.era, 0.0)
@@ -298,10 +327,13 @@ Action Points: {self.current_action_points}/{self.action_points}
         # Era bonus (additional points based on development stage)
         era_bonus = {
             "Primitive": 0,
-            "Ancient": 50,
+            "Classical": 50,
             "Medieval": 150,
-            "Modern": 300,
-            "Future": 500
+            "Renaissance": 250,
+            "Industrial": 400,
+            "Modern": 600,
+            "Information": 800,
+            "Future": 1000
         }
         score += era_bonus.get(self.era, 0)
         
@@ -385,10 +417,13 @@ Action Points: {self.current_action_points}/{self.action_points}
         # Era multiplier
         era_multipliers = {
             "Primitive": 1,
-            "Ancient": 2,
+            "Classical": 2,
             "Medieval": 3,
-            "Modern": 5,
-            "Future": 10
+            "Renaissance": 4,
+            "Industrial": 6,
+            "Modern": 8,
+            "Information": 12,
+            "Future": 16
         }
         era_multiplier = era_multipliers.get(self.era, 1)
         
@@ -478,7 +513,7 @@ Action Points: {self.current_action_points}/{self.action_points}
         if winner == self:
             # Attacker won
             self.loyalty = max(0, self.loyalty + 5)  # Attacking and winning increases loyalty
-            opponent.loyalty = max(0, opponent.loyalty - 10)  # Losing decreases loyalty
+            opponent.loyalty = max(0, opponent.loyalty - 5)  # Losing decreases loyalty (reduced from -10)
         elif winner == opponent:
             # Attacker lost
             self.loyalty = max(0, self.loyalty - 10)  # Attacking and losing decreases loyalty

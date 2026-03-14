@@ -40,6 +40,86 @@ class CivilizationGame:
             "civ2": []
         }
         
+        # Era events definitions
+        self.era_events = {
+            "Primitive": {
+                "name": "天灾",
+                "description": "自然灾害威胁着你的文明，需要资源来应对。",
+                "cost": {"resources": 50},
+                "reward": {"loyalty": 10},
+                "penalty": {"population": -5, "loyalty": -15},
+                "probability": 0.3
+            },
+            "Classical": {
+                "name": "蛮夷入侵",
+                "description": "周边蛮族准备入侵，需要军队和资源来防御。",
+                "cost": {"resources": 100, "military": 5},
+                "reward": {"military": 10, "loyalty": 15},
+                "penalty": {"population": -10, "resources": -150},
+                "probability": 0.25
+            },
+            "Medieval": {
+                "name": "人文思潮",
+                "description": "新的思想运动兴起，需要资源来支持文化发展。",
+                "cost": {"resources": 150},
+                "reward": {"culture": 20, "loyalty": 10},
+                "penalty": {"loyalty": -10},
+                "probability": 0.35
+            },
+            "Renaissance": {
+                "name": "积极探索",
+                "description": "探索新世界的机会，需要资源来支持探险队。",
+                "cost": {"resources": 200},
+                "reward": {"resources": 300, "technology": 5},
+                "penalty": {"resources": -50},
+                "probability": 0.3
+            },
+            "Industrial": {
+                "name": "大工业生产",
+                "description": "工业革命的机会，需要资源来建立工厂。",
+                "cost": {"resources": 300},
+                "reward": {"resources": 500, "technology": 10},
+                "penalty": {"loyalty": -15},
+                "probability": 0.25
+            },
+            "Modern": {
+                "name": "原子能科技",
+                "description": "原子能技术的发展，需要资源来研究。",
+                "cost": {"resources": 400, "technology": 5},
+                "reward": {"technology": 20, "military": 15},
+                "penalty": {"population": -15, "loyalty": -20},
+                "probability": 0.2
+            },
+            "Information": {
+                "name": "人工智能",
+                "description": "人工智能技术的突破，需要资源和技术来开发。",
+                "cost": {"resources": 500, "technology": 10},
+                "reward": {"technology": 30, "culture": 25},
+                "penalty": {"loyalty": -15},
+                "probability": 0.25
+            },
+            "Future": {
+                "name": "星际探索",
+                "description": "星际探索的机会，需要大量资源来支持。",
+                "cost": {"resources": 800},
+                "reward": {"technology": 50, "culture": 40, "loyalty": 30},
+                "penalty": {"resources": -200, "loyalty": -25},
+                "probability": 0.2
+            }
+        }
+        
+        # Track which events have been triggered for each civilization and era
+        self.triggered_events = {
+            "civ1": set(),
+            "civ2": set()
+        }
+        
+        # War penalties tracking
+        self.war_penalties = {
+            "civ1": False,
+            "civ2": False
+        }
+        
     def print_game_state(self):
         """Print the current game state for both civilizations."""
         print(f"\n{'='*60}")
@@ -95,8 +175,15 @@ class CivilizationGame:
             "actions": turn_actions
         })
         
+        # Check if civilization is under war penalty
+        war_penalty = self.war_penalties[civ_key]
+        
         # Update civilization state after all actions
-        civ.update_turn()
+        civ.update_turn(war_penalty)
+        
+        # Reset war penalty for next turn
+        if war_penalty:
+            self.war_penalties[civ_key] = False
     
     def check_game_end(self):
         """Check if the game has ended."""
@@ -263,8 +350,74 @@ class CivilizationGame:
                         "population": plunder_population
                     }
                 })
+                
+                # Apply war penalty: next turn's growth will be halved for the attacker
+                if attacker == self.civ1:
+                    self.war_penalties["civ1"] = True
+                else:
+                    self.war_penalties["civ2"] = True
         
         print('='*60)
+    
+    def handle_era_event(self, civ, ai, civ_key):
+        """Handle era events for a civilization.
+        
+        Args:
+            civ: The civilization to handle the event for
+            ai: The AI controller for the civilization
+            civ_key: The key for the civilization in the triggered_events dictionary
+        """
+        # Check if event has already been triggered for this era
+        event_key = f"{civ_key}_{civ.era}"
+        if event_key in self.triggered_events[civ_key]:
+            return
+        
+        # Check if era has an event defined
+        if civ.era not in self.era_events:
+            return
+        
+        event = self.era_events[civ.era]
+        
+        # Roll for event occurrence
+        import random
+        if random.random() > event["probability"]:
+            return
+        
+        print(f"\nERA EVENT for {civ.name} ({civ.era}): {event['name']}")
+        print(f"Description: {event['description']}")
+        print(f"Cost: {event['cost']}")
+        print(f"Reward: {event['reward']}")
+        print(f"Penalty if declined: {event['penalty']}")
+        
+        # Check if civilization can afford the event
+        can_afford = True
+        for resource, amount in event["cost"].items():
+            if getattr(civ, resource, 0) < amount:
+                can_afford = False
+                break
+        
+        if not can_afford:
+            print(f"{civ.name} cannot afford the event. Applying penalty.")
+            # Apply penalty
+            for resource, amount in event["penalty"].items():
+                setattr(civ, resource, max(0, getattr(civ, resource, 0) + amount))
+            return
+        
+        # Get AI decision
+        # For simplicity, we'll assume AI always accepts if it can afford
+        # In a more advanced implementation, we'd ask the AI for a decision
+        print(f"{civ.name} accepts the event. Applying cost and reward.")
+        
+        # Apply cost
+        for resource, amount in event["cost"].items():
+            setattr(civ, resource, getattr(civ, resource, 0) - amount)
+        
+        # Apply reward
+        for resource, amount in event["reward"].items():
+            setattr(civ, resource, getattr(civ, resource, 0) + amount)
+        
+        # Mark event as triggered
+        self.triggered_events[civ_key].add(event_key)
     
     def run(self):
         """Run the main game loop."""
@@ -284,6 +437,10 @@ class CivilizationGame:
                 if game_ended:
                     print(f"\nGame Over! {reason}")
                     break
+                
+                # Handle era events for both civilizations
+                self.handle_era_event(self.civ1, self.ai1, "civ1")
+                self.handle_era_event(self.civ2, self.ai2, "civ2")
                 
                 # Diplomacy phase (trade and war)
                 self.handle_diplomacy()

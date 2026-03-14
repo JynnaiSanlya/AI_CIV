@@ -23,7 +23,11 @@ game_state = {
         "civ1": [],
         "civ2": []
     },
-    "diplomacy_history": []
+    "diplomacy_history": [],
+    "era_events": {
+        "civ1": [],
+        "civ2": []
+    }
 }
 
 # Game instance
@@ -324,6 +328,43 @@ HTML_TEMPLATE = """
             border-left: 4px solid #e67e22;
         }
         
+        /* Era Events */
+        .era-events {
+            background-color: #2c2c2c;
+            border: 2px solid #444;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .era-events-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #4a90e2;
+        }
+        
+        .era-event-item {
+            background-color: #333;
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 10px;
+            font-size: 14px;
+            border-left: 4px solid #9b59b6; /* Purple for era events */
+        }
+        
+        .era-event-item .turn {
+            color: #f39c12;
+            font-weight: bold;
+        }
+        
+        .era-event-item .event-name {
+            color: #9b59b6;
+            font-weight: bold;
+        }
+        
         .game-over {
             text-align: center;
             font-size: 36px;
@@ -391,6 +432,11 @@ HTML_TEMPLATE = """
             <div id="diplomacy-history-content"></div>
         </div>
         
+        <div class="era-events">
+            <div class="era-events-title">Era Events</div>
+            <div id="era-events-content"></div>
+        </div>
+        
         <div id="game-over" class="game-over" style="display: none;"></div>
     </div>
     
@@ -420,6 +466,11 @@ HTML_TEMPLATE = """
                     
                     // Update diplomacy history
                     updateDiplomacyHistory(data.diplomacy_history);
+                    
+                    // Update era events
+                    if (data.era_events) {
+                        updateEraEvents(data.era_events);
+                    }
                 })
                 .catch(error => console.error('Error fetching game state:', error));
         }
@@ -544,6 +595,44 @@ HTML_TEMPLATE = """
                 
                 eventDiv.innerHTML = eventHTML;
                 historyDiv.appendChild(eventDiv);
+            });
+        }
+        
+        // Update era events
+        function updateEraEvents(eraEvents) {
+            const eventsDiv = document.getElementById('era-events-content');
+            eventsDiv.innerHTML = '';
+            
+            // Combine events from both civilizations
+            const allEvents = [];
+            for (const civ in eraEvents) {
+                eraEvents[civ].forEach(event => {
+                    allEvents.push({
+                        ...event,
+                        civ: civ
+                    });
+                });
+            }
+            
+            // Sort events by turn (newest first)
+            allEvents.sort((a, b) => b.turn - a.turn);
+            
+            // Get last 10 events
+            const recentEvents = allEvents.slice(0, 10);
+            
+            recentEvents.forEach(event => {
+                const eventDiv = document.createElement('div');
+                eventDiv.className = 'era-event-item';
+                
+                let eventHTML = `<div class="turn">Turn ${event.turn}</div>`;
+                eventHTML += `<div class="event-name">${event.civ === 'civ1' ? 'Atlantis' : 'Eldorado'}: ${event.name}</div>`;
+                eventHTML += `<div>${event.description}</div>`;
+                eventHTML += `<div>Cost: ${JSON.stringify(event.cost)}</div>`;
+                eventHTML += `<div>Reward: ${JSON.stringify(event.reward)}</div>`;
+                eventHTML += `<div>Result: ${event.result}</div>`;
+                
+                eventDiv.innerHTML = eventHTML;
+                eventsDiv.appendChild(eventDiv);
             });
         }
         
