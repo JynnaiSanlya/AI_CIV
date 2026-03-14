@@ -147,21 +147,28 @@ class Civilization:
                 self.loyalty = min(100, self.loyalty + loyalty_recovery)
             # If resources are 0, loyalty remains stable
         
-        # Update era based on technology
-        if self.technology >= 21:
+        # Calculate era progression score based on technology and culture
+        # Technology has higher weight (80%), culture has smaller weight (20%)
+        era_score = self.technology * 0.8 + self.culture * 0.2
+        
+        # Update era based on combined technology and culture score
+        # Increased thresholds to make each era longer
+        if era_score >= 105:
             self.era = "Future"
-        elif self.technology >= 18:
+        elif era_score >= 90:
             self.era = "Information"
-        elif self.technology >= 15:
+        elif era_score >= 75:
             self.era = "Modern"
-        elif self.technology >= 12:
+        elif era_score >= 60:
             self.era = "Industrial"
-        elif self.technology >= 9:
+        elif era_score >= 45:
             self.era = "Renaissance"
-        elif self.technology >= 6:
+        elif era_score >= 30:
             self.era = "Medieval"
-        elif self.technology >= 3:
+        elif era_score >= 15:
             self.era = "Classical"
+        else:
+            self.era = "Primitive"
         
         # Reset war count if era has changed
         if self.era != self.previous_era:

@@ -22,7 +22,7 @@ class CivilizationGame:
         self.ai2 = AIController(self.civ2.name, model_name=model_name2)
         
         # Game settings
-        self.max_turns = 10
+        self.max_turns = 50  # Increased from 10 to 50 for longer games
         self.current_turn = 0
         
         # Model information for display

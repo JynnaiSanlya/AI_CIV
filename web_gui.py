@@ -193,14 +193,14 @@ HTML_TEMPLATE = """
         }
         
         /* Era-specific images */
-        .era-primitive { background-image: url('https://via.placeholder.com/400x200/505050/ffffff?text=Campfire'); } /* Campfire */
-        .era-classical { background-image: url('https://via.placeholder.com/400x200/8b4513/ffffff?text=Acropolis'); } /* Acropolis */
-        .era-medieval { background-image: url('https://via.placeholder.com/400x200/a52a2a/ffffff?text=Castle'); } /* Castle */
-        .era-renaissance { background-image: url('https://via.placeholder.com/400x200/daa520/ffffff?text=Art%20Gallery'); } /* Art Gallery */
-        .era-industrial { background-image: url('https://via.placeholder.com/400x200/708090/ffffff?text=Factory'); } /* Factory */
-        .era-modern { background-image: url('https://via.placeholder.com/400x200/d3d3d3/000000?text=City'); } /* City */
-        .era-information { background-image: url('https://via.placeholder.com/400x200/4682b4/ffffff?text=Data%20Center'); } /* Data Center */
-        .era-future { background-image: url('https://via.placeholder.com/400x200/87ceeb/000000?text=Spaceship'); } /* Spaceship */
+        .era-primitive { background-image: url('/assets/images/EraLives/Primitive.jpg'); } /* Primitive */
+        .era-classical { background-image: url('/assets/images/EraLives/Classical.jpg'); } /* Classical */
+        .era-medieval { background-image: url('/assets/images/EraLives/Medieval.jpg'); } /* Medieval */
+        .era-renaissance { background-image: url('/assets/images/EraLives/Renaissance.jpg'); } /* Renaissance */
+        .era-industrial { background-image: url('/assets/images/EraLives/Industrial.jpg'); } /* Industrial */
+        .era-modern { background-image: url('/assets/images/EraLives/Modern.jpg'); } /* Modern */
+        .era-information { background-image: url('/assets/images/EraLives/Information.jpg'); } /* Information */
+        .era-future { background-image: url('/assets/images/EraLives/Future.jpg'); } /* Future */
         
         .diplomacy {
             background-color: #2c2c2c;
@@ -677,6 +677,32 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
             self.send_header('Content-type', 'application/json')
             self.end_headers()
             self.wfile.write(json.dumps(game_state).encode('utf-8'))
+        elif self.path.startswith('/assets/'):
+            # Serve static files from assets directory
+            file_path = self.path[1:]  # Remove leading slash
+            full_path = os.path.join(os.getcwd(), file_path)
+            
+            if os.path.exists(full_path):
+                # Determine content type based on file extension
+                ext = os.path.splitext(full_path)[1].lower()
+                content_type = {
+                    '.jpg': 'image/jpeg',
+                    '.jpeg': 'image/jpeg',
+                    '.png': 'image/png',
+                    '.gif': 'image/gif',
+                    '.css': 'text/css',
+                    '.js': 'application/javascript'
+                }.get(ext, 'application/octet-stream')
+                
+                self.send_response(200)
+                self.send_header('Content-type', content_type)
+                self.end_headers()
+                with open(full_path, 'rb') as f:
+                    self.wfile.write(f.read())
+            else:
+                self.send_response(404)
+                self.end_headers()
+                self.wfile.write(b'404 Not Found')
         else:
             # Handle 404
             self.send_response(404)

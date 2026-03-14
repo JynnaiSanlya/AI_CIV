@@ -40,6 +40,9 @@ Your Civilization State:
 - Population: {civ_state['population']}
 - Military: {civ_state['military']}
 - Technology: {civ_state['technology']}
+- Culture: {civ_state['culture']}
+- Loyalty: {civ_state['loyalty']}
+- Action Points: {civ_state['current_action_points']}/{civ_state['action_points']}
 
 Opponent Civilization State:
 - Name: {opponent_state['name']}
@@ -48,6 +51,9 @@ Opponent Civilization State:
 - Population: {opponent_state['population']}
 - Military: {opponent_state['military']}
 - Technology: {opponent_state['technology']}
+- Culture: {opponent_state['culture']}
+- Loyalty: {opponent_state['loyalty']}
+- Action Points: {opponent_state['current_action_points']}/{opponent_state['action_points']}
 
 Available Actions:
 1. develop_technology [amount] - Invest resources to develop technology. Resource Cost: amount * 20, Action Cost: 2
@@ -56,19 +62,45 @@ Available Actions:
 4. gather_resources [amount] - Collect more resources. Resource Cost: 0, Action Cost: 1, Dynamic Limit: max(1, population // 10 + technology * 2)
 5. develop_culture [amount] - Develop cultural influence. Resource Cost: amount * 10, Action Cost: 1
 
-Rules:
-- You can choose multiple actions per turn (one per line)
-- The amount must be a positive integer for each action
-- You cannot spend more resources than you have in total
-- You cannot exceed your available action points (each action costs a specific number of action points)
-- The gather_resources action has a dynamic upper limit based on population and technology: max(1, population // 10 + technology * 2)
-- Your decisions should be based on your civilization's current needs, available action points, and the opponent's state
-- Actions will be executed in the order you provide
-- You start with 5 action points per turn, and gain +1 action point for each new era you enter
+Game Rules:
+
+1. Era System:
+   - 8 Eras: Primitive → Classical → Medieval → Renaissance → Industrial → Modern → Information → Future
+   - Era Progress: Calculated as (Technology * 0.8 + Culture * 0.2)
+   - Higher thresholds for longer eras: Primitive (0-14), Classical (15-29), Medieval (30-44), Renaissance (45-59), Industrial (60-74), Modern (75-89), Information (90-104), Future (105+)
+   - Action Points: Start with 5, +1 every TWO new eras (Primitive:5, Classical:5, Medieval:6, Renaissance:6, Industrial:7, Modern:7, Information:8, Future:8)
+
+2. Culture System:
+   - Culture grows naturally with population
+   - High culture affects loyalty and can absorb enemy population
+   - Culture contributes to era progression (20% weight)
+   - Culture can be plundered in war but not traded
+   - Culture is included in final scoring
+
+3. War System:
+   - Attackers winning: +5 loyalty
+   - Attackers losing: -10 loyalty
+   - Defenders winning: +5 loyalty
+   - Defenders losing: -5 loyalty (reduced penalty)
+   - War initiators: Next turn population and resource growth halved
+
+4. Era Events:
+   - Each era has specific events with probability of occurrence
+   - Events require resources/population investment for rewards or penalty avoidance
+   - Examples: Natural Disasters (Primitive), Barbarian Invasion (Classical), Cultural Renaissance (Medieval), etc.
+
+5. General Rules:
+   - You can choose multiple actions per turn (one per line)
+   - The amount must be a positive integer for each action
+   - You cannot spend more resources than you have in total
+   - You cannot exceed your available action points (each action costs specific AP)
+   - The gather_resources action has a dynamic upper limit: max(1, population // 10 + technology * 2)
+   - Actions will be executed in the order you provide
 
 Example Decision:
 grow_population 2
 develop_technology 1
+develop_culture 1
 gather_resources 3
 
 Your Decision:
