@@ -1,0 +1,34 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Logs
+logs
+*.log
+
+# Game state files
+game_state_turn_*.json
+
+# Environment variables
+.env
+config.json
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temporary files
+*.tmp
+*.temp
+*.swp
+*.swo
+
+# Build files
+build/
+dist/
+*.egg-info/
