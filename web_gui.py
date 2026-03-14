@@ -194,9 +194,12 @@ HTML_TEMPLATE = """
         
         /* Era-specific images */
         .era-primitive { background-image: url('https://via.placeholder.com/400x200/505050/ffffff?text=Campfire'); } /* Campfire */
-        .era-ancient { background-image: url('https://via.placeholder.com/400x200/8b4513/ffffff?text=Tent'); } /* Tent */
+        .era-classical { background-image: url('https://via.placeholder.com/400x200/8b4513/ffffff?text=Acropolis'); } /* Acropolis */
         .era-medieval { background-image: url('https://via.placeholder.com/400x200/a52a2a/ffffff?text=Castle'); } /* Castle */
+        .era-renaissance { background-image: url('https://via.placeholder.com/400x200/daa520/ffffff?text=Art%20Gallery'); } /* Art Gallery */
+        .era-industrial { background-image: url('https://via.placeholder.com/400x200/708090/ffffff?text=Factory'); } /* Factory */
         .era-modern { background-image: url('https://via.placeholder.com/400x200/d3d3d3/000000?text=City'); } /* City */
+        .era-information { background-image: url('https://via.placeholder.com/400x200/4682b4/ffffff?text=Data%20Center'); } /* Data Center */
         .era-future { background-image: url('https://via.placeholder.com/400x200/87ceeb/000000?text=Spaceship'); } /* Spaceship */
         
         .diplomacy {

@@ -525,10 +525,13 @@ class CivilizationGame:
             # Calculate era bonus
             era_bonus = {
                 "Primitive": 0,
-                "Ancient": 50,
+                "Classical": 50,
                 "Medieval": 150,
-                "Modern": 300,
-                "Future": 500
+                "Renaissance": 250,
+                "Industrial": 400,
+                "Modern": 600,
+                "Information": 800,
+                "Future": 1000
             }[civ.era]
             print(f"  Era Bonus: {era_bonus} points")
             
