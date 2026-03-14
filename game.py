@@ -120,6 +120,9 @@ class CivilizationGame:
             "civ2": False
         }
         
+        # Era events history for display
+        self.era_events_history = []
+        
     def print_game_state(self):
         """Print the current game state for both civilizations."""
         print(f"\n{'='*60}")
@@ -396,28 +399,44 @@ class CivilizationGame:
                 can_afford = False
                 break
         
+        event_result = ""
         if not can_afford:
+            event_result = "cannot_afford"
             print(f"{civ.name} cannot afford the event. Applying penalty.")
             # Apply penalty
             for resource, amount in event["penalty"].items():
                 setattr(civ, resource, max(0, getattr(civ, resource, 0) + amount))
-            return
-        
-        # Get AI decision
-        # For simplicity, we'll assume AI always accepts if it can afford
-        # In a more advanced implementation, we'd ask the AI for a decision
-        print(f"{civ.name} accepts the event. Applying cost and reward.")
-        
-        # Apply cost
-        for resource, amount in event["cost"].items():
-            setattr(civ, resource, getattr(civ, resource, 0) - amount)
-        
-        # Apply reward
-        for resource, amount in event["reward"].items():
-            setattr(civ, resource, getattr(civ, resource, 0) + amount)
+        else:
+            # Get AI decision
+            # For simplicity, we'll assume AI always accepts if it can afford
+            # In a more advanced implementation, we'd ask the AI for a decision
+            event_result = "accepted"
+            print(f"{civ.name} accepts the event. Applying cost and reward.")
+            
+            # Apply cost
+            for resource, amount in event["cost"].items():
+                setattr(civ, resource, getattr(civ, resource, 0) - amount)
+            
+            # Apply reward
+            for resource, amount in event["reward"].items():
+                setattr(civ, resource, getattr(civ, resource, 0) + amount)
         
         # Mark event as triggered
         self.triggered_events[civ_key].add(event_key)
+        
+        # Record the event to history for display in web UI
+        self.era_events_history.append({
+            "turn": self.current_turn,
+            "civ": civ_key,
+            "civ_name": civ.name,
+            "era": civ.era,
+            "event": event["name"],
+            "description": event["description"],
+            "cost": event["cost"],
+            "reward": event["reward"],
+            "penalty": event["penalty"],
+            "result": event_result
+        })
     
     def run(self):
         """Run the main game loop."""

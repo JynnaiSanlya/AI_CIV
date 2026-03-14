@@ -3,6 +3,7 @@ import socketserver
 import json
 import threading
 import time
+import os
 from game import CivilizationGame
 
 # Web server settings
@@ -679,8 +680,12 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
             self.wfile.write(json.dumps(game_state).encode('utf-8'))
         elif self.path.startswith('/assets/'):
             # Serve static files from assets directory
-            file_path = self.path[1:]  # Remove leading slash
-            full_path = os.path.join(os.getcwd(), file_path)
+            # Get the file path without the leading slash
+            relative_path = self.path[1:]  # Remove leading slash
+            
+            # Construct the full path using the current script directory
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            full_path = os.path.join(script_dir, relative_path)
             
             if os.path.exists(full_path):
                 # Determine content type based on file extension
@@ -694,12 +699,17 @@ class RequestHandler(http.server.SimpleHTTPRequestHandler):
                     '.js': 'application/javascript'
                 }.get(ext, 'application/octet-stream')
                 
+                # Debug: Print the path being served
+                print(f"Serving static file: {full_path}")
+                
                 self.send_response(200)
                 self.send_header('Content-type', content_type)
                 self.end_headers()
                 with open(full_path, 'rb') as f:
                     self.wfile.write(f.read())
             else:
+                # Debug: Print missing file path
+                print(f"Static file not found: {full_path}")
                 self.send_response(404)
                 self.end_headers()
                 self.wfile.write(b'404 Not Found')
@@ -739,6 +749,20 @@ def update_game_state():
             # Update diplomacy history
             if hasattr(game, 'diplomacy_history'):
                 game_state["diplomacy_history"] = game.diplomacy_history
+            
+            # Update era events history
+            if hasattr(game, 'era_events_history'):
+                # Convert era events history to UI format
+                era_events_ui = {
+                    "civ1": [],
+                    "civ2": []
+                }
+                for event in game.era_events_history:
+                    if event["civ"] == "civ1":
+                        era_events_ui["civ1"].append(event)
+                    elif event["civ"] == "civ2":
+                        era_events_ui["civ2"].append(event)
+                game_state["era_events"] = era_events_ui
         
         time.sleep(1)  # Update game state every second
 
@@ -776,6 +800,10 @@ def run_game():
                 game.reason = reason
                 break
             
+            # Handle era events for both civilizations
+            game.handle_era_event(game.civ1, game.ai1, "civ1")
+            game.handle_era_event(game.civ2, game.ai2, "civ2")
+            
             # Diplomacy phase (trade and war)
             game.handle_diplomacy()
             
@@ -791,6 +819,10 @@ def run_game():
             # Civilization 2's turn
             game.handle_civilization_turn(game.civ2, game.civ1, game.ai2)
             time.sleep(1)  # Pause for readability
+            
+            # Apply culture influence after both turns
+            game.civ1.apply_culture_influence(game.civ2)
+            game.civ2.apply_culture_influence(game.civ1)
             
             # Update game state
             game_state["turn"] = game.current_turn
