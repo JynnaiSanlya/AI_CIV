@@ -375,6 +375,57 @@ HTML_TEMPLATE = """
             color: #e74c3c;
             margin-top: 50px;
         }
+        
+        .final-results {
+            background-color: #2c2c2c;
+            border: 2px solid #444;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 30px;
+            text-align: center;
+        }
+        
+        .final-results-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #4a90e2;
+        }
+        
+        .final-scores {
+            display: flex;
+            justify-content: center;
+            gap: 50px;
+            margin-bottom: 20px;
+        }
+        
+        .civ-score {
+            text-align: center;
+        }
+        
+        .civ-score-name {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+        
+        .civ-score-value {
+            font-size: 36px;
+            font-weight: bold;
+        }
+        
+        .winner-announcement {
+            font-size: 28px;
+            font-weight: bold;
+            margin-top: 20px;
+            color: #f39c12;
+        }
+        
+        .winning-margin {
+            font-size: 18px;
+            margin-top: 10px;
+            color: #95a5a6;
+        }
     </style>
 </head>
 <body>
@@ -442,6 +493,13 @@ HTML_TEMPLATE = """
         </div>
         
         <div id="game-over" class="game-over" style="display: none;"></div>
+        
+        <div id="final-results" class="final-results" style="display: none;">
+            <div class="final-results-title">Final Results</div>
+            <div class="final-scores" id="final-scores"></div>
+            <div class="winner-announcement" id="winner-announcement"></div>
+            <div class="winning-margin" id="winning-margin"></div>
+        </div>
     </div>
     
     <script>
@@ -453,6 +511,43 @@ HTML_TEMPLATE = """
                     if (data.game_ended) {
                         document.getElementById('game-over').textContent = `Game Over! ${data.reason}`;
                         document.getElementById('game-over').style.display = 'block';
+                        
+                        // Display final results if available
+                        if (data.final_scores && data.winner) {
+                            const finalResultsDiv = document.getElementById('final-results');
+                            const finalScoresDiv = document.getElementById('final-scores');
+                            const winnerAnnouncementDiv = document.getElementById('winner-announcement');
+                            const winningMarginDiv = document.getElementById('winning-margin');
+                            
+                            // Clear existing content
+                            finalScoresDiv.innerHTML = '';
+                            
+                            // Create score display for each civilization
+                            for (const civName in data.final_scores) {
+                                const civScoreDiv = document.createElement('div');
+                                civScoreDiv.className = 'civ-score';
+                                
+                                civScoreDiv.innerHTML = `
+                                    <div class="civ-score-name">${civName}</div>
+                                    <div class="civ-score-value">${data.final_scores[civName]}</div>
+                                `;
+                                
+                                finalScoresDiv.appendChild(civScoreDiv);
+                            }
+                            
+                            // Set winner announcement
+                            if (data.winner === 'Tie') {
+                                winnerAnnouncementDiv.textContent = 'The game ended in a tie!';
+                                winningMarginDiv.textContent = '';
+                            } else {
+                                winnerAnnouncementDiv.textContent = `${data.winner} wins!`;
+                                winningMarginDiv.textContent = `Winning Margin: ${data.winning_margin} points`;
+                            }
+                            
+                            // Show final results
+                            finalResultsDiv.style.display = 'block';
+                        }
+                        
                         return;
                     }
                     
@@ -763,6 +858,19 @@ def update_game_state():
                     elif event["civ"] == "civ2":
                         era_events_ui["civ2"].append(event)
                 game_state["era_events"] = era_events_ui
+            
+            # Update final results if game ended
+            if hasattr(game, 'game_ended') and game.game_ended:
+                if hasattr(game, 'winner'):
+                    game_state["winner"] = game.winner
+                if hasattr(game, 'final_scores'):
+                    game_state["final_scores"] = game.final_scores
+                if hasattr(game, 'winning_score'):
+                    game_state["winning_score"] = game.winning_score
+                if hasattr(game, 'losing_score'):
+                    game_state["losing_score"] = game.losing_score
+                if hasattr(game, 'winning_margin'):
+                    game_state["winning_margin"] = game.winning_margin
         
         time.sleep(1)  # Update game state every second
 
@@ -843,6 +951,32 @@ def run_game():
         # Set game ended flag
         game.game_ended = True
         game.reason = "Game completed"
+        
+        # Calculate final scores and winner
+        score1 = game.civ1.calculate_score()
+        score2 = game.civ2.calculate_score()
+        
+        if score1 > score2:
+            game.winner = game.civ1.name
+            game.winning_score = score1
+            game.losing_score = score2
+            game.winning_margin = score1 - score2
+        elif score2 > score1:
+            game.winner = game.civ2.name
+            game.winning_score = score2
+            game.losing_score = score1
+            game.winning_margin = score2 - score1
+        else:
+            game.winner = "Tie"
+            game.winning_score = score1
+            game.losing_score = score2
+            game.winning_margin = 0
+        
+        # Store final scores for display
+        game.final_scores = {
+            game.civ1.name: score1,
+            game.civ2.name: score2
+        }
 
 if __name__ == "__main__":
     # Start the web server in a separate thread
