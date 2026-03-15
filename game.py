@@ -1,7 +1,10 @@
 import sys
 import time
+import json
+import os
 from civilization import Civilization
 from ai_controller import AIController
+from era_event import EraEvent
 
 class CivilizationGame:
     """Main game class for AI civilization simulation."""
@@ -40,73 +43,8 @@ class CivilizationGame:
             "civ2": []
         }
         
-        # Era events definitions
-        self.era_events = {
-            "Primitive": {
-                "name": "天灾",
-                "description": "自然灾害威胁着你的文明，需要资源来应对。",
-                "cost": {"resources": 50},
-                "reward": {"loyalty": 10},
-                "penalty": {"population": -5, "loyalty": -15},
-                "probability": 0.3
-            },
-            "Classical": {
-                "name": "蛮夷入侵",
-                "description": "周边蛮族准备入侵，需要军队和资源来防御。",
-                "cost": {"resources": 100, "military": 5},
-                "reward": {"military": 10, "loyalty": 15},
-                "penalty": {"population": -10, "resources": -150},
-                "probability": 0.25
-            },
-            "Medieval": {
-                "name": "人文思潮",
-                "description": "新的思想运动兴起，需要资源来支持文化发展。",
-                "cost": {"resources": 150},
-                "reward": {"culture": 20, "loyalty": 10},
-                "penalty": {"loyalty": -10},
-                "probability": 0.35
-            },
-            "Renaissance": {
-                "name": "积极探索",
-                "description": "探索新世界的机会，需要资源来支持探险队。",
-                "cost": {"resources": 200},
-                "reward": {"resources": 300, "technology": 5},
-                "penalty": {"resources": -50},
-                "probability": 0.3
-            },
-            "Industrial": {
-                "name": "大工业生产",
-                "description": "工业革命的机会，需要资源来建立工厂。",
-                "cost": {"resources": 300},
-                "reward": {"resources": 500, "technology": 10},
-                "penalty": {"loyalty": -15},
-                "probability": 0.25
-            },
-            "Modern": {
-                "name": "原子能科技",
-                "description": "原子能技术的发展，需要资源来研究。",
-                "cost": {"resources": 400, "technology": 5},
-                "reward": {"technology": 20, "military": 15},
-                "penalty": {"population": -15, "loyalty": -20},
-                "probability": 0.2
-            },
-            "Information": {
-                "name": "人工智能",
-                "description": "人工智能技术的突破，需要资源和技术来开发。",
-                "cost": {"resources": 500, "technology": 10},
-                "reward": {"technology": 30, "culture": 25},
-                "penalty": {"loyalty": -15},
-                "probability": 0.25
-            },
-            "Future": {
-                "name": "星际探索",
-                "description": "星际探索的机会，需要大量资源来支持。",
-                "cost": {"resources": 800},
-                "reward": {"technology": 50, "culture": 40, "loyalty": 30},
-                "penalty": {"resources": -200, "loyalty": -25},
-                "probability": 0.2
-            }
-        }
+        # Load era events from configuration file
+        self.era_events = self._load_era_events()
         
         # Track which events have been triggered for each civilization and era
         self.triggered_events = {
@@ -122,6 +60,40 @@ class CivilizationGame:
         
         # Era events history for display
         self.era_events_history = []
+    
+    def _load_era_events(self):
+        """Load era events from JSON configuration file.
+        
+        Returns:
+            dict: Dictionary mapping era names to EraEvent objects
+        """
+        config_path = os.path.join(os.path.dirname(__file__), 'era_events.json')
+        
+        try:
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+                era_events_data = config.get('era_events', {})
+                
+                # Convert dictionaries to EraEvent objects
+                era_events = {}
+                for era_name, event_data in era_events_data.items():
+                    try:
+                        era_events[era_name] = EraEvent.from_dict(event_data)
+                    except (ValueError, KeyError) as e:
+                        print(f"Warning: Invalid event data for era '{era_name}': {e}")
+                        continue
+                
+                return era_events
+                
+        except FileNotFoundError:
+            print(f"Warning: Era events configuration file not found at {config_path}")
+            return {}
+        except json.JSONDecodeError as e:
+            print(f"Error: Failed to parse era events configuration: {e}")
+            return {}
+        except Exception as e:
+            print(f"Unexpected error loading era events: {e}")
+            return {}
         
     def print_game_state(self):
         """Print the current game state for both civilizations."""
@@ -520,18 +492,18 @@ class CivilizationGame:
         
         # Roll for event occurrence
         import random
-        if random.random() > event["probability"]:
+        if random.random() > event.probability:
             return
         
-        print(f"\nERA EVENT for {civ.name} ({civ.era}): {event['name']}")
-        print(f"Description: {event['description']}")
-        print(f"Cost: {event['cost']}")
-        print(f"Reward: {event['reward']}")
-        print(f"Penalty if declined: {event['penalty']}")
+        print(f"\nERA EVENT for {civ.name} ({civ.era}): {event.name}")
+        print(f"Description: {event.description}")
+        print(f"Cost: {event.cost}")
+        print(f"Reward: {event.reward}")
+        print(f"Penalty if declined: {event.penalty}")
         
         # Check if civilization can afford the event
         can_afford = True
-        for resource, amount in event["cost"].items():
+        for resource, amount in event.cost.items():
             if getattr(civ, resource, 0) < amount:
                 can_afford = False
                 break
@@ -541,7 +513,7 @@ class CivilizationGame:
             event_result = "cannot_afford"
             print(f"{civ.name} cannot afford the event. Applying penalty.")
             # Apply penalty
-            for resource, amount in event["penalty"].items():
+            for resource, amount in event.penalty.items():
                 setattr(civ, resource, max(0, getattr(civ, resource, 0) + amount))
         else:
             # Get AI decision
@@ -551,11 +523,11 @@ class CivilizationGame:
             print(f"{civ.name} accepts the event. Applying cost and reward.")
             
             # Apply cost
-            for resource, amount in event["cost"].items():
+            for resource, amount in event.cost.items():
                 setattr(civ, resource, getattr(civ, resource, 0) - amount)
             
             # Apply reward
-            for resource, amount in event["reward"].items():
+            for resource, amount in event.reward.items():
                 setattr(civ, resource, getattr(civ, resource, 0) + amount)
         
         # Mark event as triggered
@@ -567,11 +539,11 @@ class CivilizationGame:
             "civ": civ_key,
             "civ_name": civ.name,
             "era": civ.era,
-            "event": event["name"],
-            "description": event["description"],
-            "cost": event["cost"],
-            "reward": event["reward"],
-            "penalty": event["penalty"],
+            "event": event.name,
+            "description": event.description,
+            "cost": event.cost,
+            "reward": event.reward,
+            "penalty": event.penalty,
             "result": event_result
         })
     

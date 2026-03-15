@@ -1,0 +1,68 @@
+{
+  "era_events": {
+    "Primitive": {
+      "name": "天灾",
+      "description": "自然灾害威胁着你的文明，需要资源来应对。",
+      "cost": {"resources": 50},
+      "reward": {"loyalty": 10},
+      "penalty": {"population": -5, "loyalty": -15},
+      "probability": 0.3
+    },
+    "Classical": {
+      "name": "蛮夷入侵",
+      "description": "周边蛮族准备入侵，需要军队和资源来防御。",
+      "cost": {"resources": 100, "military": 5},
+      "reward": {"military": 10, "loyalty": 15},
+      "penalty": {"population": -10, "resources": -150},
+      "probability": 0.25
+    },
+    "Medieval": {
+      "name": "人文思潮",
+      "description": "新的思想运动兴起，需要资源来支持文化发展。",
+      "cost": {"resources": 150},
+      "reward": {"culture": 20, "loyalty": 10},
+      "penalty": {"loyalty": -10},
+      "probability": 0.35
+    },
+    "Renaissance": {
+      "name": "积极探索",
+      "description": "探索新世界的机会，需要资源来支持探险队。",
+      "cost": {"resources": 200},
+      "reward": {"resources": 300, "technology": 5},
+      "penalty": {"resources": -50},
+      "probability": 0.3
+    },
+    "Industrial": {
+      "name": "大工业生产",
+      "description": "工业革命的机会，需要资源来建立工厂。",
+      "cost": {"resources": 300},
+      "reward": {"resources": 500, "technology": 10},
+      "penalty": {"loyalty": -15},
+      "probability": 0.25
+    },
+    "Modern": {
+      "name": "原子能科技",
+      "description": "原子能技术的发展，需要资源来研究。",
+      "cost": {"resources": 400, "technology": 5},
+      "reward": {"technology": 20, "military": 15},
+      "penalty": {"population": -15, "loyalty": -20},
+      "probability": 0.2
+    },
+    "Information": {
+      "name": "人工智能",
+      "description": "人工智能技术的突破，需要资源和技术来开发。",
+      "cost": {"resources": 500, "technology": 10},
+      "reward": {"technology": 30, "culture": 25},
+      "penalty": {"loyalty": -15},
+      "probability": 0.25
+    },
+    "Future": {
+      "name": "星际探索",
+      "description": "星际探索的机会，需要大量资源来支持。",
+      "cost": {"resources": 800},
+      "reward": {"technology": 50, "culture": 40, "loyalty": 30},
+      "penalty": {"resources": -200, "loyalty": -25},
+      "probability": 0.2
+    }
+  }
+}
