@@ -363,3 +363,120 @@ WAR DECISION: NO
 
 Your Decision:
 """
+
+    def get_internal_event_decision(self, civ_state, event_data):
+        """
+        Get AI decision for an internal event.
+        
+        Args:
+            civ_state: Dictionary with civilization's current state
+            event_data: Dictionary with event information and options
+            
+        Returns:
+            str: The key of the selected option
+        """
+        prompt = self._build_internal_event_prompt(civ_state, event_data)
+
+        try:
+            # Call Aliyun DashScope API using urllib
+            payload = {
+                "model": self.model,
+                "input": {
+                    "prompt": prompt
+                },
+                "parameters": {
+                    "max_tokens": 512,
+                    "temperature": 0.7
+                }
+            }
+            
+            # Convert payload to JSON string
+            json_payload = json.dumps(payload).encode('utf-8')
+            
+            # Create request
+            req = urllib.request.Request(
+                self.endpoint,
+                data=json_payload,
+                headers={
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json"
+                }
+            )
+            
+            # Send request with timeout
+            with urllib.request.urlopen(req, timeout=10) as response:
+                response_text_raw = response.read().decode('utf-8')
+                response_data = json.loads(response_text_raw)
+            
+            # Check if response has output field (success)
+            if "output" in response_data:
+                response_text = response_data.get("output", {}).get("text", "")
+            else:
+                # Handle error case
+                error_msg = response_data.get("message", f"Unknown error. Response: {response_text_raw}")
+                raise Exception(f"Aliyun API error: {error_msg}")
+
+            # Extract option key from response
+            import re
+            pattern = r'DECISION: (.+)'
+            match = re.search(pattern, response_text)
+            if match:
+                decision = match.group(1).strip()
+                return decision
+            else:
+                # Default to first option if parsing fails
+                return list(event_data.get("options", {}).keys())[0]
+
+        except Exception as e:
+            print(f"Error getting AI internal event decision: {e}")
+            # Fallback to first option
+            return list(event_data.get("options", {}).keys())[0]
+
+    def _build_internal_event_prompt(self, civ_state, event_data):
+        """
+        Build prompt for AI internal event decision-making.
+        """
+        # Format options
+        options_text = ""
+        for option_key, option_data in event_data.get("options", {}).items():
+            options_text += f"{option_key}: {option_data['name']} - {option_data['description']}\n"
+            if "cost" in option_data:
+                cost_text = ", ".join([f"{k}: {v}" for k, v in option_data["cost"].items()])
+                options_text += f"  Cost: {cost_text}\n"
+            if "effects" in option_data:
+                effects = option_data["effects"]
+                effects_text = f"  Effects: {effects['type']} effect\n"
+                if effects["type"] == "continuous" or effects["type"] == "mixed":
+                    duration = effects.get("duration", 0) if effects["type"] == "continuous" else effects.get("continuous", {}).get("duration", 0)
+                    effects_text += f"  Duration: {duration} turns\n"
+                options_text += effects_text
+        
+        return f"""
+You are the leader of {self.civilization_name}, a civilization in a turn-based strategy game.
+
+Your Civilization State:
+- Name: {civ_state['name']}
+- Era: {civ_state['era']}
+- Resources: {civ_state['resources']}
+- Population: {civ_state['population']}
+- Military: {civ_state['military']}
+- Technology: {civ_state['technology']}
+- Culture: {civ_state['culture']}
+- Loyalty: {civ_state['loyalty']}
+
+Current Event:
+Name: {event_data['name']}
+Description: {event_data['description']}
+
+Available Options:
+{options_text}
+
+Your Decision:
+Please choose one option by specifying its key. Use the format:
+DECISION: [option_key]
+
+For example:
+DECISION: encourage
+
+Your Decision:
+"""

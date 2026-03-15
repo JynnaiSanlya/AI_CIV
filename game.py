@@ -60,6 +60,24 @@ class CivilizationGame:
         
         # Era events history for display
         self.era_events_history = []
+        
+        # Load internal events
+        self.internal_events = self._load_internal_events()
+        
+        # Track internal events cooldowns for each civilization
+        self.internal_events_cooldowns = {
+            "civ1": {},
+            "civ2": {}
+        }
+        
+        # Track active continuous effects for each civilization
+        self.active_effects = {
+            "civ1": [],
+            "civ2": []
+        }
+        
+        # Internal events history for display
+        self.internal_events_history = []
     
     def _load_era_events(self):
         """Load era events from JSON configuration file.
@@ -78,7 +96,7 @@ class CivilizationGame:
                 era_events = {}
                 for era_name, event_data in era_events_data.items():
                     try:
-                        era_events[era_name] = EraEvent.from_dict(event_data)
+                        era_events[era_name] = era_events_data[era_name]
                     except (ValueError, KeyError) as e:
                         print(f"Warning: Invalid event data for era '{era_name}': {e}")
                         continue
@@ -94,6 +112,224 @@ class CivilizationGame:
         except Exception as e:
             print(f"Unexpected error loading era events: {e}")
             return {}
+    
+    def _load_internal_events(self):
+        """Load internal events from JSON configuration file.
+        
+        Returns:
+            dict: Dictionary mapping event IDs to event data
+        """
+        config_path = os.path.join(os.path.dirname(__file__), 'internal_events.json')
+        
+        try:
+            with open(config_path, 'r', encoding='utf-8') as f:
+                config = json.load(f)
+                return config.get('internal_events', {})
+                
+        except FileNotFoundError:
+            print(f"Warning: Internal events configuration file not found at {config_path}")
+            return {}
+        except json.JSONDecodeError as e:
+            print(f"Error: Failed to parse internal events configuration: {e}")
+            return {}
+        except Exception as e:
+            print(f"Unexpected error loading internal events: {e}")
+            return {}
+    
+    def handle_internal_events(self):
+        """Handle internal events for both civilizations."""
+        for civ, civ_key in [(self.civ1, "civ1"), (self.civ2, "civ2")]:
+            self._check_and_trigger_internal_event(civ, civ_key)
+        
+    def _check_and_trigger_internal_event(self, civ, civ_key):
+        """Check if an internal event should be triggered for a civilization.
+        
+        Args:
+            civ: The civilization object
+            civ_key: The key for the civilization ("civ1" or "civ2")
+        """
+        import random
+        
+        # Check each internal event
+        for event_id, event_data in self.internal_events.items():
+            # Check cooldown
+            if event_id in self.internal_events_cooldowns[civ_key]:
+                if self.internal_events_cooldowns[civ_key][event_id] > 0:
+                    # Decrease cooldown
+                    self.internal_events_cooldowns[civ_key][event_id] -= 1
+                    continue
+                else:
+                    # Cooldown expired, remove it
+                    del self.internal_events_cooldowns[civ_key][event_id]
+            
+            # Check if event should trigger
+            if random.random() < event_data.get("trigger_probability", 0):
+                # Trigger the event
+                self._handle_internal_event(civ, civ_key, event_id, event_data)
+                # Set cooldown
+                self.internal_events_cooldowns[civ_key][event_id] = event_data.get("cooldown_turns", 10)
+                break
+    
+    def _handle_internal_event(self, civ, civ_key, event_id, event_data):
+        """Handle a specific internal event for a civilization.
+        
+        Args:
+            civ: The civilization object
+            civ_key: The key for the civilization ("civ1" or "civ2")
+            event_id: The ID of the event being handled
+            event_data: The event data dictionary
+        """
+        print(f"\nINTERNAL EVENT for {civ.name}: {event_data['name']}")
+        print(f"Description: {event_data['description']}")
+        print("Options:")
+        
+        # Display options
+        options = event_data.get("options", {})
+        option_list = list(options.keys())
+        for i, (option_key, option_data) in enumerate(options.items(), 1):
+            print(f"{i}. {option_data['name']}: {option_data['description']}")
+        
+        # Get AI decision
+        ai = self.ai1 if civ == self.civ1 else self.ai2
+        decision = ai.get_internal_event_decision(civ.to_dict(), event_data)
+        
+        # Process the decision
+        if decision in options:
+            option_data = options[decision]
+            print(f"{civ.name} chooses: {option_data['name']}")
+            
+            # Check if option has cost
+            cost = option_data.get("cost", {})
+            can_afford = True
+            for resource, amount in cost.items():
+                if getattr(civ, resource, 0) < amount:
+                    can_afford = False
+                    break
+            
+            if can_afford:
+                # Apply cost
+                for resource, amount in cost.items():
+                    setattr(civ, resource, getattr(civ, resource) - amount)
+                    print(f"  Cost: {resource} - {amount}")
+                
+                # Apply effects
+                self._apply_internal_event_effects(civ, civ_key, option_data['effects'])
+            else:
+                print(f"  {civ.name} cannot afford this option. Choosing default option.")
+                # Choose the first option as default
+                default_option = option_list[0]
+                self._apply_internal_event_effects(civ, civ_key, options[default_option]['effects'])
+        else:
+            print(f"  Invalid decision. Choosing default option.")
+            # Choose the first option as default
+            default_option = option_list[0]
+            self._apply_internal_event_effects(civ, civ_key, options[default_option]['effects'])
+        
+        # Record the event
+        self.internal_events_history.append({
+            "turn": self.current_turn,
+            "civ": civ_key,
+            "civ_name": civ.name,
+            "event": event_data["name"],
+            "description": event_data["description"],
+            "decision": decision
+        })
+    
+    def _apply_internal_event_effects(self, civ, civ_key, effects):
+        """Apply the effects of an internal event option.
+        
+        Args:
+            civ: The civilization object
+            civ_key: The key for the civilization ("civ1" or "civ2")
+            effects: The effects dictionary from the event option
+        """
+        effect_type = effects.get("type", "immediate")
+        
+        if effect_type == "immediate":
+            # Apply immediate effects
+            for resource, amount in effects.items():
+                if resource != "type":
+                    current_value = getattr(civ, resource, 0)
+                    setattr(civ, resource, max(0, current_value + amount))
+                    print(f"  Effect: {resource} + {amount}")
+        
+        elif effect_type == "continuous":
+            # Add continuous effect
+            duration = effects.get("duration", 5)
+            self.active_effects[civ_key].append({
+                "effect": effects,
+                "remaining_turns": duration
+            })
+            print(f"  Effect: {effects.get('description', 'Continuous effect')} for {duration} turns")
+        
+        elif effect_type == "mixed":
+            # Apply immediate effects
+            immediate_effects = effects.get("immediate", {})
+            for resource, amount in immediate_effects.items():
+                current_value = getattr(civ, resource, 0)
+                setattr(civ, resource, max(0, current_value + amount))
+                print(f"  Immediate Effect: {resource} + {amount}")
+            
+            # Add continuous effect
+            continuous_effects = effects.get("continuous", {})
+            if continuous_effects:
+                duration = continuous_effects.get("duration", 5)
+                self.active_effects[civ_key].append({
+                    "effect": continuous_effects,
+                    "remaining_turns": duration
+                })
+                print(f"  Continuous Effect: {continuous_effects.get('description', 'Continuous effect')} for {duration} turns")
+    
+    def apply_active_effects(self, civ, civ_key):
+        """Apply active continuous effects to a civilization.
+        
+        Args:
+            civ: The civilization object
+            civ_key: The key for the civilization ("civ1" or "civ2")
+        """
+        # Process active effects
+        effects_to_remove = []
+        for i, effect_entry in enumerate(self.active_effects[civ_key]):
+            effect = effect_entry["effect"]
+            remaining_turns = effect_entry["remaining_turns"]
+            
+            # Apply the effect for this turn
+            if "culture_growth_boost" in effect:
+                # This will be handled in the civilization's update_turn method
+                pass
+            elif "culture_growth_penalty" in effect:
+                # This will be handled in the civilization's update_turn method
+                pass
+            elif "population_growth_boost" in effect:
+                # This will be handled in the civilization's update_turn method
+                pass
+            elif "resource_growth_boost" in effect:
+                # This will be handled in the civilization's update_turn method
+                pass
+            elif "resource_growth_penalty" in effect:
+                # This will be handled in the civilization's update_turn method
+                pass
+            elif "loyalty_gain" in effect:
+                civ.loyalty = min(100, civ.loyalty + effect["loyalty_gain"])
+                print(f"  Active Effect: {civ.name} loyalty +{effect['loyalty_gain']}")
+            elif "loyalty_risk" in effect:
+                import random
+                if random.random() < effect["loyalty_risk"]:
+                    civ.loyalty = max(0, civ.loyalty + effect["loyalty_risk_amount"])
+                    print(f"  Active Effect: {civ.name} loyalty {effect['loyalty_risk_amount']}")
+            
+            # Decrease remaining turns
+            remaining_turns -= 1
+            effect_entry["remaining_turns"] = remaining_turns
+            
+            # Mark effect for removal if duration expired
+            if remaining_turns <= 0:
+                effects_to_remove.append(i)
+        
+        # Remove expired effects (in reverse order to avoid index issues)
+        for i in reversed(effects_to_remove):
+            removed_effect = self.active_effects[civ_key].pop(i)
+            print(f"  Effect expired: {removed_effect['effect'].get('description', 'Continuous effect')}")
         
     def print_game_state(self):
         """Print the current game state for both civilizations."""
@@ -566,16 +802,29 @@ class CivilizationGame:
                     print(f"\nGame Over! {reason}")
                     break
                 
+                # Handle internal events for both civilizations
+                self.handle_internal_events()
+                
                 # Handle era events for both civilizations
                 self.handle_era_event(self.civ1, self.ai1, "civ1")
                 self.handle_era_event(self.civ2, self.ai2, "civ2")
                 
+                # Apply active effects before diplomacy phase
+                self.apply_active_effects(self.civ1, "civ1")
+                self.apply_active_effects(self.civ2, "civ2")
+                
                 # Diplomacy phase (trade and war)
                 self.handle_diplomacy()
+                
+                # Apply active effects before civilization turns
+                self.apply_active_effects(self.civ1, "civ1")
                 
                 # Civilization 1's turn
                 self.handle_civilization_turn(self.civ1, self.civ2, self.ai1)
                 time.sleep(1)  # Pause for readability
+                
+                # Apply active effects before civilization 2's turn
+                self.apply_active_effects(self.civ2, "civ2")
                 
                 # Civilization 2's turn
                 self.handle_civilization_turn(self.civ2, self.civ1, self.ai2)

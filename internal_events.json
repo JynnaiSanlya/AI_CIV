@@ -1,0 +1,119 @@
+{
+  "internal_events": {
+    "militant_wind": {
+      "name": "民间好战之风",
+      "description": "民间出现了好战的风气，你需要决定如何应对。",
+      "trigger_probability": 0.15,
+      "cooldown_turns": 15,
+      "options": {
+        "encourage": {
+          "name": "鼓励好战风气",
+          "description": "鼓励这种风气，军队发展不需要消耗人口，但资源增长会减慢。",
+          "effects": {
+            "type": "continuous",
+            "duration": 8,
+            "military_cost_no_population": true,
+            "resource_growth_penalty": 0.8
+          }
+        },
+        "suppress": {
+          "name": "打压好战风气",
+          "description": "打压这种风气，军队发展需要双倍人口，但文化发展会加快。",
+          "effects": {
+            "type": "continuous",
+            "duration": 8,
+            "military_cost_double_population": true,
+            "culture_growth_boost": 1.5
+          }
+        }
+      }
+    },
+    "new_invention": {
+      "name": "本国新发明",
+      "description": "本国科学家发明了一项新技术，你需要决定如何利用。",
+      "trigger_probability": 0.2,
+      "cooldown_turns": 10,
+      "options": {
+        "support_research": {
+          "name": "大力支持科技",
+          "description": "投入资源支持进一步研究，获得科技值。",
+          "cost": {
+            "resources": 100
+          },
+          "effects": {
+            "type": "immediate",
+            "technology": 10
+          }
+        },
+        "commercialize": {
+          "name": "推广新发明",
+          "description": "将技术商业化，获得少量资源。",
+          "effects": {
+            "type": "immediate",
+            "resources": 50
+          }
+        }
+      }
+    },
+    "cultural_movement": {
+      "name": "本国文化运动",
+      "description": "本国出现了一场文化运动，你需要决定支持哪种文化方向。",
+      "trigger_probability": 0.15,
+      "cooldown_turns": 15,
+      "options": {
+        "support_new_culture": {
+          "name": "支持新文化",
+          "description": "支持新文化，文化增长加快，但忠诚度可能下降。",
+          "effects": {
+            "type": "continuous",
+            "duration": 10,
+            "culture_growth_boost": 1.5,
+            "loyalty_risk": 0.2,
+            "loyalty_risk_amount": -2
+          }
+        },
+        "preserve_tradition": {
+          "name": "维护传统",
+          "description": "维护传统文化，忠诚度增加，但文化增长减慢。",
+          "effects": {
+            "type": "continuous",
+            "duration": 10,
+            "loyalty_gain": 1,
+            "culture_growth_penalty": 0.5
+          }
+        }
+      }
+    },
+    "resource_discovery": {
+      "name": "发现大量资源",
+      "description": "本国境内发现了大量资源，你需要决定如何开发。",
+      "trigger_probability": 0.1,
+      "cooldown_turns": 20,
+      "options": {
+        "let_civilian_develop": {
+          "name": "放任民间开发",
+          "description": "让民间自行开发，增加忠诚度和人口增长。",
+          "effects": {
+            "type": "mixed",
+            "immediate": {
+              "loyalty": 5
+            },
+            "continuous": {
+              "duration": 12,
+              "population_growth_boost": 1.2
+            }
+          }
+        },
+        "nationalize": {
+          "name": "收归国有",
+          "description": "将资源收归国有，增加资源增长。",
+          "effects": {
+            "type": "continuous",
+            "duration": 12,
+            "resource_growth_boost": 1.3
+          }
+        }
+      }
+    }
+  }
+}
