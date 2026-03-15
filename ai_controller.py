@@ -331,11 +331,17 @@ Trade Rules:
 
 War Rules:
 - You can declare war only if you have not already initiated 2 wars this era (except Future era)
-- Attackers winning: +5 loyalty
-- Attackers losing: -10 loyalty
-- Defenders winning: +5 loyalty
-- Defenders losing: -5 loyalty (reduced penalty)
-- War initiators: Next turn population and resource growth halved
+- **War Benefits**:
+  - Attackers winning: +5 loyalty, plunder up to 40% of opponent's resources, up to 40% of opponent's population, and up to 20% of opponent's culture
+  - Defenders winning: +5 loyalty
+  - Plundered resources, population, and culture are directly added to your civilization
+  - War can significantly accelerate your civilization's growth if successful
+- **War Risks**:
+  - Attackers losing: -10 loyalty, potential loss of military units
+  - Defenders losing: -5 loyalty (reduced penalty), up to 40% loss of resources, population, and 20% loss of culture
+  - War initiators: Next turn population and resource growth halved
+- **Military Advantage**: If your military strength is significantly higher than your opponent, you have a high chance of winning
+- **Era Advantage**: Higher eras have stronger military multipliers, giving you an edge over lower-era civilizations
 
 Your Decision:
 Please decide whether to propose trade, declare war, or do nothing.
