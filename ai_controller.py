@@ -96,6 +96,9 @@ Game Rules:
    - You cannot exceed your available action points (each action costs specific AP)
    - The gather_resources action has a dynamic upper limit: max(1, population // 10 + technology * 2)
    - Actions will be executed in the order you provide
+   - If you cannot afford any other actions except gather_resources, you should try to gather resources
+   - When gathering resources, you should gather as much as possible up to the dynamic limit, since there is no cost to gather resources
+   - Always gather resources at the maximum possible amount if you have action points left and no other actions to perform
 
 Example Decision:
 grow_population 2
@@ -180,3 +183,177 @@ Your Decision:
             print(f"Error getting AI decision: {e}")
             # Fallback to default action
             return [("develop_technology", 1)]
+
+    def get_diplomacy_decision(self, civ_state, opponent_state, turn_number, wars_initiated):
+        """
+        Get AI diplomacy decisions (trade and war).
+
+        Args:
+            civ_state: Dictionary with civilization's current state
+            opponent_state: Dictionary with opponent's current state
+            turn_number: Current turn number
+            wars_initiated: Number of wars initiated by this civilization
+
+        Returns:
+            dict: Dictionary containing diplomacy decisions
+        """
+        prompt = self._build_diplomacy_prompt(civ_state, opponent_state, turn_number, wars_initiated)
+
+        try:
+            # Call Aliyun DashScope API using urllib
+            payload = {
+                "model": self.model,
+                "input": {
+                    "prompt": prompt
+                },
+                "parameters": {
+                    "max_tokens": 1024,
+                    "temperature": 0.7
+                }
+            }
+            
+            # Convert payload to JSON string
+            json_payload = json.dumps(payload).encode('utf-8')
+            
+            # Create request
+            req = urllib.request.Request(
+                self.endpoint,
+                data=json_payload,
+                headers={
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json"
+                }
+            )
+            
+            # Send request
+            with urllib.request.urlopen(req) as response:
+                response_text_raw = response.read().decode('utf-8')
+                response_data = json.loads(response_text_raw)
+            
+            # Check if response has output field (success)
+            if "output" in response_data:
+                response_text = response_data.get("output", {}).get("text", "")
+            else:
+                # Handle error case
+                error_msg = response_data.get("message", f"Unknown error. Response: {response_text_raw}")
+                raise Exception(f"Aliyun API error: {error_msg}")
+
+            # Parse diplomacy decision
+            diplomacy_decision = {
+                "trade": False,
+                "war": False,
+                "trade_offer": {
+                    "resources": 0,
+                    "population": 0,
+                    "technology": 0
+                },
+                "trade_request": {
+                    "resources": 0,
+                    "population": 0,
+                    "technology": 0
+                }
+            }
+
+            # Check if AI wants to trade
+            if "TRADE DECISION: YES" in response_text:
+                diplomacy_decision["trade"] = True
+                # Extract trade offer
+                offer_pattern = r'TRADE OFFER:\s*resources=(\d+),\s*population=(\d+),\s*technology=(\d+)'
+                offer_match = re.search(offer_pattern, response_text)
+                if offer_match:
+                    diplomacy_decision["trade_offer"] = {
+                        "resources": int(offer_match.group(1)),
+                        "population": int(offer_match.group(2)),
+                        "technology": int(offer_match.group(3))
+                    }
+                # Extract trade request
+                request_pattern = r'TRADE REQUEST:\s*resources=(\d+),\s*population=(\d+),\s*technology=(\d+)'
+                request_match = re.search(request_pattern, response_text)
+                if request_match:
+                    diplomacy_decision["trade_request"] = {
+                        "resources": int(request_match.group(1)),
+                        "population": int(request_match.group(2)),
+                        "technology": int(request_match.group(3))
+                    }
+
+            # Check if AI wants to declare war
+            if "WAR DECISION: YES" in response_text:
+                diplomacy_decision["war"] = True
+
+            return diplomacy_decision
+
+        except Exception as e:
+            print(f"Error getting AI diplomacy decision: {e}")
+            # Fallback to no trade and no war
+            return diplomacy_decision
+
+    def _build_diplomacy_prompt(self, civ_state, opponent_state, turn_number, wars_initiated):
+        """
+        Build prompt for AI diplomacy decision-making.
+        """
+        return f"""
+You are the leader of {self.civilization_name}, a civilization in a turn-based strategy game.
+
+Current Turn: {turn_number}
+
+Your Civilization State:
+- Name: {civ_state['name']}
+- Era: {civ_state['era']}
+- Resources: {civ_state['resources']}
+- Population: {civ_state['population']}
+- Military: {civ_state['military']}
+- Technology: {civ_state['technology']}
+- Culture: {civ_state['culture']}
+- Loyalty: {civ_state['loyalty']}
+- Wars Initiated this Era: {wars_initiated}/2
+
+Opponent Civilization State:
+- Name: {opponent_state['name']}
+- Era: {opponent_state['era']}
+- Resources: {opponent_state['resources']}
+- Population: {opponent_state['population']}
+- Military: {opponent_state['military']}
+- Technology: {opponent_state['technology']}
+- Culture: {opponent_state['culture']}
+- Loyalty: {opponent_state['loyalty']}
+
+Diplomacy Options:
+1. TRADE: Propose a trade with the opponent civilization
+2. WAR: Declare war on the opponent civilization
+3. PEACE: Do nothing (continue in peace)
+
+Trade Rules:
+- You can offer resources, population, or technology
+- You can request resources, population, or technology
+- Both civilizations must have enough resources to complete the trade
+- You cannot offer more than you have
+- You cannot request more than the opponent has
+
+War Rules:
+- You can declare war only if you have not already initiated 2 wars this era (except Future era)
+- Attackers winning: +5 loyalty
+- Attackers losing: -10 loyalty
+- Defenders winning: +5 loyalty
+- Defenders losing: -5 loyalty (reduced penalty)
+- War initiators: Next turn population and resource growth halved
+
+Your Decision:
+Please decide whether to propose trade, declare war, or do nothing.
+
+For trade, specify the exact resources, population, and technology you want to offer and request.
+
+Example Trade Decision:
+TRADE DECISION: YES
+TRADE OFFER: resources=30, population=0, technology=0
+TRADE REQUEST: resources=0, population=0, technology=2
+
+Example War Decision:
+TRADE DECISION: NO
+WAR DECISION: YES
+
+Example Peace Decision:
+TRADE DECISION: NO
+WAR DECISION: NO
+
+Your Decision:
+"""

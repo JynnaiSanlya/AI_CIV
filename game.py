@@ -220,32 +220,39 @@ class CivilizationGame:
         print("DIPLOMACY PHASE")
         print('='*60)
         
-        # Randomly decide if either civilization wants to propose trade or attack
-        import random
+        # Get diplomacy decisions from both civilizations
+        civ1_decision = self.ai1.get_diplomacy_decision(
+            self.civ1.to_dict(), 
+            self.civ2.to_dict(), 
+            self.current_turn,
+            self.civ1.wars_initiated
+        )
         
-        # 30% chance for trade proposal
-        if random.random() < 0.3:
-            # Decide which civilization proposes trade
-            proposer, responder = random.choice([(self.civ1, self.civ2), (self.civ2, self.civ1)])
+        civ2_decision = self.ai2.get_diplomacy_decision(
+            self.civ2.to_dict(), 
+            self.civ1.to_dict(), 
+            self.current_turn,
+            self.civ2.wars_initiated
+        )
+        
+        # Handle trade proposals (only one proposal per turn, prioritize civ1 then civ2)
+        trade_handled = False
+        
+        # Check if civ1 wants to trade
+        if civ1_decision["trade"] and not trade_handled:
+            proposer = self.civ1
+            responder = self.civ2
+            ai = self.ai1
+            offer = civ1_decision["trade_offer"]
+            request = civ1_decision["trade_request"]
             
-            # Generate trade proposal (simple AI logic)
-            # Offer resources for technology, or population for resources
-            if proposer.resources > responder.resources:
-                # Proposer has more resources, offer resources for technology
-                offer_resources = random.randint(10, 50)
-                offer_population = 0
-                offer_technology = 0
-                request_resources = 0
-                request_population = 0
-                request_technology = random.randint(1, 3)
-            else:
-                # Proposer has less resources, offer technology for resources
-                offer_resources = 0
-                offer_population = 0
-                offer_technology = random.randint(1, 2)
-                request_resources = random.randint(20, 60)
-                request_population = 0
-                request_technology = 0
+            # Extract trade details
+            offer_resources = offer["resources"]
+            offer_population = offer["population"]
+            offer_technology = offer["technology"]
+            request_resources = request["resources"]
+            request_population = request["population"]
+            request_technology = request["technology"]
             
             print(f"\n{proposer.name} proposes trade to {responder.name}:")
             print(f"  Offers: {offer_resources} resources, {offer_population} population, {offer_technology} technology")
@@ -288,6 +295,7 @@ class CivilizationGame:
                         "result": "accepted",
                         "details": result
                     })
+                    trade_handled = True
                 else:
                     print(f"  {responder.name} rejects the trade.")
                     
@@ -312,10 +320,95 @@ class CivilizationGame:
             else:
                 print(f"  Trade cannot be completed due to insufficient resources.")
         
-        # 20% chance for attack
-        if random.random() < 0.2:
-            # Decide which civilization attacks
-            attacker, defender = random.choice([(self.civ1, self.civ2), (self.civ2, self.civ1)])
+        # Check if civ2 wants to trade (only if no trade has been handled yet)
+        if civ2_decision["trade"] and not trade_handled:
+            proposer = self.civ2
+            responder = self.civ1
+            ai = self.ai2
+            offer = civ2_decision["trade_offer"]
+            request = civ2_decision["trade_request"]
+            
+            # Extract trade details
+            offer_resources = offer["resources"]
+            offer_population = offer["population"]
+            offer_technology = offer["technology"]
+            request_resources = request["resources"]
+            request_population = request["population"]
+            request_technology = request["technology"]
+            
+            print(f"\n{proposer.name} proposes trade to {responder.name}:")
+            print(f"  Offers: {offer_resources} resources, {offer_population} population, {offer_technology} technology")
+            print(f"  Requests: {request_resources} resources, {request_population} population, {request_technology} technology")
+            
+            # Check if trade is possible (both have enough to offer)
+            if (proposer.resources >= offer_resources and
+                proposer.population >= offer_population and
+                proposer.technology >= offer_technology and
+                responder.resources >= request_resources and
+                responder.population >= request_population and
+                responder.technology >= request_technology):
+                
+                # Ask responder to accept trade
+                if responder.propose_trade(proposer, 
+                                         request_resources, request_population, request_technology,
+                                         offer_resources, offer_population, offer_technology):
+                    # Execute the trade
+                    result = proposer.execute_trade(responder, 
+                                                 offer_resources, offer_population, offer_technology,
+                                                 request_resources, request_population, request_technology)
+                    print(f"  {responder.name} accepts! {result}")
+                    
+                    # Record trade in history
+                    self.diplomacy_history.append({
+                        "turn": self.current_turn,
+                        "type": "trade",
+                        "proposer": proposer.name,
+                        "responder": responder.name,
+                        "offer": {
+                            "resources": offer_resources,
+                            "population": offer_population,
+                            "technology": offer_technology
+                        },
+                        "request": {
+                            "resources": request_resources,
+                            "population": request_population,
+                            "technology": request_technology
+                        },
+                        "result": "accepted",
+                        "details": result
+                    })
+                    trade_handled = True
+                else:
+                    print(f"  {responder.name} rejects the trade.")
+                    
+                    # Record rejected trade in history
+                    self.diplomacy_history.append({
+                        "turn": self.current_turn,
+                        "type": "trade",
+                        "proposer": proposer.name,
+                        "responder": responder.name,
+                        "offer": {
+                            "resources": offer_resources,
+                            "population": offer_population,
+                            "technology": offer_technology
+                        },
+                        "request": {
+                            "resources": request_resources,
+                            "population": request_population,
+                            "technology": request_technology
+                        },
+                        "result": "rejected"
+                    })
+            else:
+                print(f"  Trade cannot be completed due to insufficient resources.")
+        
+        # Handle war declarations (only one war per turn, prioritize civ1 then civ2)
+        war_handled = False
+        
+        # Check if civ1 wants to declare war
+        if civ1_decision["war"] and not war_handled:
+            attacker = self.civ1
+            defender = self.civ2
             
             # Check warmonger limit: max 2 wars per era (except last era)
             if attacker.era != "Future" and attacker.wars_initiated >= 2:
@@ -355,10 +448,54 @@ class CivilizationGame:
                 })
                 
                 # Apply war penalty: next turn's growth will be halved for the attacker
-                if attacker == self.civ1:
-                    self.war_penalties["civ1"] = True
-                else:
-                    self.war_penalties["civ2"] = True
+                self.war_penalties["civ1"] = True
+                war_handled = True
+        
+        # Check if civ2 wants to declare war (only if no war has been handled yet)
+        if civ2_decision["war"] and not war_handled:
+            attacker = self.civ2
+            defender = self.civ1
+            
+            # Check warmonger limit: max 2 wars per era (except last era)
+            if attacker.era != "Future" and attacker.wars_initiated >= 2:
+                print(f"\n{attacker.name} cannot declare more wars this era! (Limit: 2 wars per era)")
+                
+                # Record failed war declaration
+                self.diplomacy_history.append({
+                    "turn": self.current_turn,
+                    "type": "war_declaration",
+                    "attacker": attacker.name,
+                    "defender": defender.name,
+                    "result": "failed",
+                    "reason": "war limit reached"
+                })
+            else:
+                print(f"\n{attacker.name} declares war on {defender.name}!")
+                result, plunder_resources, plunder_population = attacker.attack(defender)
+                
+                print(f"  {result}")
+                if plunder_resources > 0 or plunder_population > 0:
+                    print(f"  {attacker.name} plundered {plunder_resources} resources and {plunder_population} population!")
+                
+                # Increment war count for attacker
+                attacker.wars_initiated += 1
+                
+                # Record war in history
+                self.diplomacy_history.append({
+                    "turn": self.current_turn,
+                    "type": "war",
+                    "attacker": attacker.name,
+                    "defender": defender.name,
+                    "result": result,
+                    "plunder": {
+                        "resources": plunder_resources,
+                        "population": plunder_population
+                    }
+                })
+                
+                # Apply war penalty: next turn's growth will be halved for the attacker
+                self.war_penalties["civ2"] = True
+                war_handled = True
         
         print('='*60)
     
