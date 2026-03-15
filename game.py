@@ -675,6 +675,7 @@ class CivilizationGame:
             print(f"  Technology (40%): {civ.technology} × 4 = {civ.technology * 4} points")
             print(f"  Population (25%): {civ.population} × 0.25 = {round(civ.population * 0.25)} points")
             print(f"  Military (20%): {civ.military} × 2 = {civ.military * 2} points")
+            print(f"  Culture (10%): {civ.culture} × 0.2 = {round(civ.culture * 0.2)} points")
             print(f"  Resources (10%): {civ.resources} × 0.1 = {round(civ.resources * 0.1)} points")
             print(f"  Loyalty (5%): {civ.loyalty} × 0.5 = {round(civ.loyalty * 0.5)} points")
             
