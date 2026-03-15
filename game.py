@@ -728,18 +728,18 @@ class CivilizationGame:
         
         # Roll for event occurrence
         import random
-        if random.random() > event.probability:
+        if random.random() > event['probability']:
             return
         
-        print(f"\nERA EVENT for {civ.name} ({civ.era}): {event.name}")
-        print(f"Description: {event.description}")
-        print(f"Cost: {event.cost}")
-        print(f"Reward: {event.reward}")
-        print(f"Penalty if declined: {event.penalty}")
+        print(f"\nERA EVENT for {civ.name} ({civ.era}): {event['name']}")
+        print(f"Description: {event['description']}")
+        print(f"Cost: {event['cost']}")
+        print(f"Reward: {event['reward']}")
+        print(f"Penalty if declined: {event['penalty']}")
         
         # Check if civilization can afford the event
         can_afford = True
-        for resource, amount in event.cost.items():
+        for resource, amount in event['cost'].items():
             if getattr(civ, resource, 0) < amount:
                 can_afford = False
                 break
@@ -749,7 +749,7 @@ class CivilizationGame:
             event_result = "cannot_afford"
             print(f"{civ.name} cannot afford the event. Applying penalty.")
             # Apply penalty
-            for resource, amount in event.penalty.items():
+            for resource, amount in event['penalty'].items():
                 setattr(civ, resource, max(0, getattr(civ, resource, 0) + amount))
         else:
             # Get AI decision
@@ -759,11 +759,11 @@ class CivilizationGame:
             print(f"{civ.name} accepts the event. Applying cost and reward.")
             
             # Apply cost
-            for resource, amount in event.cost.items():
+            for resource, amount in event['cost'].items():
                 setattr(civ, resource, getattr(civ, resource, 0) - amount)
             
             # Apply reward
-            for resource, amount in event.reward.items():
+            for resource, amount in event['reward'].items():
                 setattr(civ, resource, getattr(civ, resource, 0) + amount)
         
         # Mark event as triggered
@@ -775,11 +775,11 @@ class CivilizationGame:
             "civ": civ_key,
             "civ_name": civ.name,
             "era": civ.era,
-            "event": event.name,
-            "description": event.description,
-            "cost": event.cost,
-            "reward": event.reward,
-            "penalty": event.penalty,
+            "event": event['name'],
+            "description": event['description'],
+            "cost": event['cost'],
+            "reward": event['reward'],
+            "penalty": event['penalty'],
             "result": event_result
         })
     

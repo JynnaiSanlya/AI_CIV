@@ -28,7 +28,8 @@ game_state = {
     "era_events": {
         "civ1": [],
         "civ2": []
-    }
+    },
+    "internal_events_history": []
 }
 
 # Game instance
@@ -426,6 +427,50 @@ HTML_TEMPLATE = """
             margin-top: 10px;
             color: #95a5a6;
         }
+        
+        .internal-events {
+            background-color: #2c2c2c;
+            border: 2px solid #444;
+            border-radius: 10px;
+            padding: 20px;
+            margin-top: 30px;
+        }
+        
+        .internal-events-title {
+            font-size: 20px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #4a90e2;
+        }
+        
+        .internal-event-item {
+            background-color: #333;
+            border-radius: 5px;
+            padding: 10px;
+            margin-bottom: 10px;
+            font-size: 14px;
+            border-left: 4px solid #3498db; /* Blue for internal events */
+        }
+        
+        .internal-event-item .turn {
+            color: #f39c12;
+            font-weight: bold;
+        }
+        
+        .internal-event-item .event-name {
+            color: #3498db;
+            font-weight: bold;
+        }
+        
+        .internal-event-item .description {
+            margin-top: 5px;
+            color: #bdc3c7;
+        }
+        
+        .internal-event-item .decision {
+            margin-top: 5px;
+            color: #2ecc71;
+        }
     </style>
 </head>
 <body>
@@ -490,6 +535,11 @@ HTML_TEMPLATE = """
         <div class="era-events">
             <div class="era-events-title">Era Events</div>
             <div id="era-events-content"></div>
+        </div>
+        
+        <div class="internal-events">
+            <div class="internal-events-title">Internal Events</div>
+            <div id="internal-events-content"></div>
         </div>
         
         <div id="game-over" class="game-over" style="display: none;"></div>
@@ -569,6 +619,11 @@ HTML_TEMPLATE = """
                     // Update era events
                     if (data.era_events) {
                         updateEraEvents(data.era_events);
+                    }
+                    
+                    // Update internal events
+                    if (data.internal_events_history) {
+                        updateInternalEvents(data.internal_events_history);
                     }
                 })
                 .catch(error => console.error('Error fetching game state:', error));
@@ -735,6 +790,43 @@ HTML_TEMPLATE = """
             });
         }
         
+        // Update internal events
+        function updateInternalEvents(internalEventsHistory) {
+            const eventsDiv = document.getElementById('internal-events-content');
+            eventsDiv.innerHTML = '';
+            
+            // Sort events by turn (newest first)
+            const sortedEvents = [...internalEventsHistory].sort((a, b) => b.turn - a.turn);
+            
+            // Get last 10 events
+            const recentEvents = sortedEvents.slice(0, 10);
+            
+            recentEvents.forEach(event => {
+                const eventDiv = document.createElement('div');
+                eventDiv.className = 'internal-event-item';
+                
+                let eventHTML = `<div class="turn">Turn ${event.turn}</div>`;
+                eventHTML += `<div class="event-name">${event.civ_name}: ${event.event_name}</div>`;
+                eventHTML += `<div class="description">${event.event_description}</div>`;
+                eventHTML += `<div class="decision">Decision: ${event.decision_name} - ${event.decision_description}</div>`;
+                
+                // Display effects
+                if (event.effects && event.effects.length > 0) {
+                    eventHTML += '<div>Effects:';
+                    eventHTML += '<ul>';
+                    event.effects.forEach(effect => {
+                        eventHTML += `<li>${effect.type}: ${effect.resource} ${effect.change} (${effect.duration} turns)</li>`;
+                    });
+                    eventHTML += '</ul></div>';
+                }
+                
+                eventHTML += `<div>Result: ${event.result}</div>`;
+                
+                eventDiv.innerHTML = eventHTML;
+                eventsDiv.appendChild(eventDiv);
+            });
+        }
+        
         // Update diplomacy icons
         function updateDiplomacyIcons(civ1, civ2) {
             const civ1Icon = document.getElementById('civ1-relation-icon');
@@ -871,6 +963,10 @@ def update_game_state():
                     game_state["losing_score"] = game.losing_score
                 if hasattr(game, 'winning_margin'):
                     game_state["winning_margin"] = game.winning_margin
+            
+            # Update internal events history
+            if hasattr(game, 'internal_events_history'):
+                game_state["internal_events_history"] = game.internal_events_history
         
         time.sleep(1)  # Update game state every second
 
