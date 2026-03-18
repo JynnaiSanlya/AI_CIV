@@ -11,7 +11,7 @@
           "description": "鼓励这种风气，军队发展不需要消耗人口，但资源增长会减慢。",
           "effects": {
             "type": "continuous",
-            "duration": 8,
+            "duration": 5,
             "military_cost_no_population": true,
             "resource_growth_penalty": 0.8
           }
@@ -21,7 +21,7 @@
           "description": "打压这种风气，军队发展需要双倍人口，但文化发展会加快。",
           "effects": {
             "type": "continuous",
-            "duration": 8,
+            "duration": 5,
             "military_cost_double_population": true,
             "culture_growth_boost": 1.5
           }
@@ -66,7 +66,7 @@
           "description": "支持新文化，文化增长加快，但忠诚度可能下降。",
           "effects": {
             "type": "continuous",
-            "duration": 10,
+            "duration": 5,
             "culture_growth_boost": 1.5,
             "loyalty_risk": 0.2,
             "loyalty_risk_amount": -2
@@ -77,7 +77,7 @@
           "description": "维护传统文化，忠诚度增加，但文化增长减慢。",
           "effects": {
             "type": "continuous",
-            "duration": 10,
+            "duration": 5,
             "loyalty_gain": 1,
             "culture_growth_penalty": 0.5
           }
@@ -99,7 +99,7 @@
               "loyalty": 5
             },
             "continuous": {
-              "duration": 12,
+              "duration": 5,
               "population_growth_boost": 1.2
             }
           }
@@ -109,7 +109,7 @@
           "description": "将资源收归国有，增加资源增长。",
           "effects": {
             "type": "continuous",
-            "duration": 12,
+            "duration": 5,
             "resource_growth_boost": 1.3
           }
         }

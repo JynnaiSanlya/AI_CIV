@@ -1004,12 +1004,23 @@ def run_game():
                 game.reason = reason
                 break
             
+            # Handle internal events for both civilizations
+            game.handle_internal_events()
+            
             # Handle era events for both civilizations
             game.handle_era_event(game.civ1, game.ai1, "civ1")
             game.handle_era_event(game.civ2, game.ai2, "civ2")
             
+            # Apply active effects before diplomacy phase
+            game.apply_active_effects(game.civ1, "civ1")
+            game.apply_active_effects(game.civ2, "civ2")
+            
             # Diplomacy phase (trade and war)
             game.handle_diplomacy()
+            
+            # Apply active effects before civilization turns
+            game.apply_active_effects(game.civ1, "civ1")
+            game.apply_active_effects(game.civ2, "civ2")
             
             # Civilization 1's turn
             game.handle_civilization_turn(game.civ1, game.civ2, game.ai1)

@@ -225,14 +225,69 @@ class CivilizationGame:
             default_option = option_list[0]
             self._apply_internal_event_effects(civ, civ_key, options[default_option]['effects'])
         
+        # Get decision details
+        if decision in options:
+            decision_data = options[decision]
+        else:
+            default_option = option_list[0]
+            decision_data = options[default_option]
+            decision = default_option
+        
+        # Extract effects for display
+        effects_list = []
+        effects = decision_data['effects']
+        if effects['type'] == 'immediate':
+            for resource, amount in effects.items():
+                if resource != 'type':
+                    effects_list.append({
+                        'type': 'immediate',
+                        'resource': resource,
+                        'change': amount,
+                        'duration': 0
+                    })
+        elif effects['type'] == 'continuous' or effects['type'] == 'mixed':
+            duration = effects.get('duration', 0)
+            for key, value in effects.items():
+                if key not in ['type', 'duration', 'immediate', 'continuous']:
+                    if isinstance(value, (int, float)):
+                        # For simple boost/penalty effects
+                        effects_list.append({
+                            'type': effects['type'],
+                            'resource': key,
+                            'change': value,
+                            'duration': duration
+                        })
+                    elif isinstance(value, bool):
+                        # For boolean effects
+                        effects_list.append({
+                            'type': effects['type'],
+                            'resource': key,
+                            'change': value,
+                            'duration': duration
+                        })
+            
+            # Handle mixed effects
+            if effects['type'] == 'mixed':
+                for resource, amount in effects.get('immediate', {}).items():
+                    effects_list.append({
+                        'type': 'immediate',
+                        'resource': resource,
+                        'change': amount,
+                        'duration': 0
+                    })
+        
         # Record the event
         self.internal_events_history.append({
             "turn": self.current_turn,
             "civ": civ_key,
             "civ_name": civ.name,
-            "event": event_data["name"],
-            "description": event_data["description"],
-            "decision": decision
+            "event_name": event_data["name"],
+            "event_description": event_data["description"],
+            "decision": decision,
+            "decision_name": decision_data["name"],
+            "decision_description": decision_data["description"],
+            "effects": effects_list,
+            "result": "completed"
         })
     
     def _apply_internal_event_effects(self, civ, civ_key, effects):
