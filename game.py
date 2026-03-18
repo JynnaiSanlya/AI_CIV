@@ -9,56 +9,60 @@ from era_event import EraEvent
 class CivilizationGame:
     """Main game class for AI civilization simulation."""
     
-    def __init__(self, model_name1="qwen-flash", model_name2="qwen-plus", model_type1="aliyun", model_type2="aliyun"):
-        """Initialize the game with two civilizations.
+    def __init__(self, civ_configs=None):
+        """Initialize the game with multiple civilizations.
         
         Args:
-            model_name1: Specific model name for civilization 1 (e.g., "qwen-flash", "abab6-chat")
-            model_name2: Specific model name for civilization 2 (e.g., "qwen-plus", "abab6-chat")
-            model_type1: Model API type for civilization 1 (e.g., "aliyun", "minimax")
-            model_type2: Model API type for civilization 2 (e.g., "aliyun", "minimax")
+            civ_configs: List of civilization configurations, each containing:
+                - name: Civilization name
+                - color: Civilization color
+                - model_name: AI model name
+                - model_type: AI model API type
         """
-        # Create two civilizations
-        self.civ1 = Civilization("Atlantis", "blue")
-        self.civ2 = Civilization("Eldorado", "gold")
+        # Default civilization configurations if none provided
+        if civ_configs is None:
+            civ_configs = [
+                {"name": "Atlantis", "color": "blue", "model_name": "qwen-flash", "model_type": "aliyun"},
+                {"name": "Eldorado", "color": "gold", "model_name": "qwen-plus", "model_type": "aliyun"}
+            ]
         
-        # Create AI controllers with specified model types
-        self.ai1 = AIController(self.civ1.name, model_name=model_name1, model_type=model_type1)
-        self.ai2 = AIController(self.civ2.name, model_name=model_name2, model_type=model_type2)
+        # Limit to a reasonable number of civilizations (max 8)
+        civ_configs = civ_configs[:8]
         
         # Game settings
         self.max_turns = 50  # Increased from 10 to 50 for longer games
         self.current_turn = 0
         
-        # Model information for display
-        self.model_info = {
-            "civ1": f"{model_type1}:{model_name1}",
-            "civ2": f"{model_type2}:{model_name2}"
-        }
+        # Initialize civilization and AI controller dictionaries
+        self.civilizations = {}
+        self.ai_controllers = {}
+        self.model_info = {}
+        
+        # Create civilizations and AI controllers
+        for i, config in enumerate(civ_configs, 1):
+            civ_id = f"civ{i}"
+            self.civilizations[civ_id] = Civilization(config["name"], config["color"])
+            self.ai_controllers[civ_id] = AIController(
+                self.civilizations[civ_id].name, 
+                model_name=config["model_name"], 
+                model_type=config["model_type"]
+            )
+            self.model_info[civ_id] = f"{config['model_type']}:{config['model_name']}"
         
         # Diplomacy history
         self.diplomacy_history = []
         
         # Action history for each civilization
-        self.action_history = {
-            "civ1": [],
-            "civ2": []
-        }
+        self.action_history = {civ_id: [] for civ_id in self.civilizations}
         
         # Load era events from configuration file
         self.era_events = self._load_era_events()
         
         # Track which events have been triggered for each civilization and era
-        self.triggered_events = {
-            "civ1": set(),
-            "civ2": set()
-        }
+        self.triggered_events = {civ_id: set() for civ_id in self.civilizations}
         
         # War penalties tracking
-        self.war_penalties = {
-            "civ1": False,
-            "civ2": False
-        }
+        self.war_penalties = {civ_id: False for civ_id in self.civilizations}
         
         # Era events history for display
         self.era_events_history = []
@@ -67,16 +71,10 @@ class CivilizationGame:
         self.internal_events = self._load_internal_events()
         
         # Track internal events cooldowns for each civilization
-        self.internal_events_cooldowns = {
-            "civ1": {},
-            "civ2": {}
-        }
+        self.internal_events_cooldowns = {civ_id: {} for civ_id in self.civilizations}
         
         # Track active continuous effects for each civilization
-        self.active_effects = {
-            "civ1": [],
-            "civ2": []
-        }
+        self.active_effects = {civ_id: [] for civ_id in self.civilizations}
         
         # Internal events history for display
         self.internal_events_history = []
@@ -139,8 +137,8 @@ class CivilizationGame:
             return {}
     
     def handle_internal_events(self):
-        """Handle internal events for both civilizations."""
-        for civ, civ_key in [(self.civ1, "civ1"), (self.civ2, "civ2")]:
+        """Handle internal events for all civilizations."""
+        for civ_key, civ in self.civilizations.items():
             self._check_and_trigger_internal_event(civ, civ_key)
         
     def _check_and_trigger_internal_event(self, civ, civ_key):
@@ -192,7 +190,7 @@ class CivilizationGame:
             print(f"{i}. {option_data['name']}: {option_data['description']}")
         
         # Get AI decision
-        ai = self.ai1 if civ == self.civ1 else self.ai2
+        ai = self.ai_controllers[civ_key]
         decision = ai.get_internal_event_decision(civ.to_dict(), event_data)
         
         # Process the decision
@@ -389,26 +387,36 @@ class CivilizationGame:
             print(f"  Effect expired: {removed_effect['effect'].get('description', 'Continuous effect')}")
         
     def print_game_state(self):
-        """Print the current game state for both civilizations."""
+        """Print the current game state for all civilizations."""
         print(f"\n{'='*60}")
         print(f"Turn {self.current_turn}")
         print('='*60)
-        print(self.civ1.get_state_description())
-        print(self.civ2.get_state_description())
+        for civ in self.civilizations.values():
+            print(civ.get_state_description())
         print('='*60)
     
-    def handle_civilization_turn(self, civ, opponent, ai):
+    def handle_civilization_turn(self, civ, civ_key, ai):
         """Handle a single turn for a civilization.
         
         Args:
             civ: The civilization taking the turn
-            opponent: The opposing civilization
+            civ_key: The key for the civilization
             ai: The AI controller for the civilization
         """
         print(f"\n{civ.name}'s Turn ({ai.model_type} AI):")
         
-        # Get AI decisions (now returns a list of actions)
-        decisions = ai.get_decision(civ.to_dict(), opponent.to_dict(), self.current_turn)
+        # Get AI decisions with information about all other civilizations
+        other_civs = [c for cid, c in self.civilizations.items() if cid != civ_key]
+        
+        if other_civs:
+            # Get all other civilizations' data
+            all_opponents_data = [oc.to_dict() for oc in other_civs]
+            # Use the first opponent as primary, but pass all to the AI
+            primary_opponent = other_civs[0].to_dict()
+            decisions = ai.get_decision(civ.to_dict(), primary_opponent, self.current_turn, all_opponents_data)
+        else:
+            # If only one civilization, use itself as opponent
+            decisions = ai.get_decision(civ.to_dict(), civ.to_dict(), self.current_turn, [])
         
         # Apply each action in sequence
         turn_actions = []
@@ -437,7 +445,6 @@ class CivilizationGame:
             turn_actions.append(action_record)
         
         # Record turn actions to game history
-        civ_key = "civ1" if civ == self.civ1 else "civ2"
         self.action_history[civ_key].append({
             "turn": self.current_turn,
             "actions": turn_actions
@@ -459,23 +466,26 @@ class CivilizationGame:
         if self.current_turn >= self.max_turns:
             return True, "Game reached maximum turns!"
         
-        # Check if one civilization's loyalty has dropped to 0
-        if self.civ1.loyalty <= 0:
-            return True, f"{self.civ1.name} has collapsed due to low loyalty!"
-        if self.civ2.loyalty <= 0:
-            return True, f"{self.civ2.name} has collapsed due to low loyalty!"
+        # Collect all civilization data for checks
+        civs = list(self.civilizations.values())
         
-        # Check if one civilization is far advanced
-        if self.civ1.technology >= 100 and self.civ1.technology > self.civ2.technology * 2:
-            return True, f"{self.civ1.name} has achieved technological dominance!"
-        if self.civ2.technology >= 100 and self.civ2.technology > self.civ1.technology * 2:
-            return True, f"{self.civ2.name} has achieved technological dominance!"
+        # Check if any civilization's loyalty has dropped to 0
+        for civ in civs:
+            if civ.loyalty <= 0:
+                return True, f"{civ.name} has collapsed due to low loyalty!"
         
-        # Check if population collapse
-        if self.civ1.population <= 0:
-            return True, f"{self.civ1.name} has collapsed!"
-        if self.civ2.population <= 0:
-            return True, f"{self.civ2.name} has collapsed!"
+        # Check if population collapse for any civilization
+        for civ in civs:
+            if civ.population <= 0:
+                return True, f"{civ.name} has collapsed!"
+        
+        # Check if one civilization is far advanced compared to all others
+        for i, civ in enumerate(civs):
+            if civ.technology >= 100:
+                # Check if this civilization is more than twice as advanced as all others
+                all_others = [c for j, c in enumerate(civs) if i != j]
+                if all(civ.technology > other.technology * 2 for other in all_others):
+                    return True, f"{civ.name} has achieved technological dominance!"
         
         return False, ""
     
@@ -485,282 +495,165 @@ class CivilizationGame:
         print("DIPLOMACY PHASE")
         print('='*60)
         
-        # Get diplomacy decisions from both civilizations
-        civ1_decision = self.ai1.get_diplomacy_decision(
-            self.civ1.to_dict(), 
-            self.civ2.to_dict(), 
-            self.current_turn,
-            self.civ1.wars_initiated
-        )
+        # Get diplomacy decisions for all civilization pairs
+        diplomacy_decisions = {}
+        civ_ids = list(self.civilizations.keys())
         
-        civ2_decision = self.ai2.get_diplomacy_decision(
-            self.civ2.to_dict(), 
-            self.civ1.to_dict(), 
-            self.current_turn,
-            self.civ2.wars_initiated
-        )
+        # For each civilization pair, get diplomacy decisions
+        for i, civ_id in enumerate(civ_ids):
+            for j, other_civ_id in enumerate(civ_ids):
+                if i != j:  # Only for different civilizations
+                    # Create a unique key for each pair (civ1_civ2 format)
+                    pair_key = f"{civ_id}_{other_civ_id}"
+                    civ = self.civilizations[civ_id]
+                    other_civ = self.civilizations[other_civ_id]
+                    diplomacy_decisions[pair_key] = self.ai_controllers[civ_id].get_diplomacy_decision(
+                        civ.to_dict(),
+                        other_civ.to_dict(),
+                        self.current_turn,
+                        civ.wars_initiated
+                    )
         
-        # Handle trade proposals (only one proposal per turn, prioritize civ1 then civ2)
-        trade_handled = False
-        
-        # Check if civ1 wants to trade
-        if civ1_decision["trade"] and not trade_handled:
-            proposer = self.civ1
-            responder = self.civ2
-            ai = self.ai1
-            offer = civ1_decision["trade_offer"]
-            request = civ1_decision["trade_request"]
-            
-            # Extract trade details
-            offer_resources = offer["resources"]
-            offer_population = offer["population"]
-            offer_technology = offer["technology"]
-            request_resources = request["resources"]
-            request_population = request["population"]
-            request_technology = request["technology"]
-            
-            print(f"\n{proposer.name} proposes trade to {responder.name}:")
-            print(f"  Offers: {offer_resources} resources, {offer_population} population, {offer_technology} technology")
-            print(f"  Requests: {request_resources} resources, {request_population} population, {request_technology} technology")
-            
-            # Check if trade is possible (both have enough to offer)
-            if (proposer.resources >= offer_resources and
-                proposer.population >= offer_population and
-                proposer.technology >= offer_technology and
-                responder.resources >= request_resources and
-                responder.population >= request_population and
-                responder.technology >= request_technology):
+        # Handle trade proposals for all civilization pairs
+        for i, proposer_id in enumerate(civ_ids):
+            for j, responder_id in enumerate(civ_ids):
+                if i == j:  # Skip trading with oneself
+                    continue
                 
-                # Ask responder to accept trade
-                if responder.propose_trade(proposer, 
-                                         request_resources, request_population, request_technology,
-                                         offer_resources, offer_population, offer_technology):
-                    # Execute the trade
-                    result = proposer.execute_trade(responder, 
-                                                 offer_resources, offer_population, offer_technology,
-                                                 request_resources, request_population, request_technology)
-                    print(f"  {responder.name} accepts! {result}")
+                proposer = self.civilizations[proposer_id]
+                responder = self.civilizations[responder_id]
+                pair_key = f"{proposer_id}_{responder_id}"
+                
+                # Check if proposer wants to trade with this specific responder
+                if pair_key in diplomacy_decisions and diplomacy_decisions[pair_key]["trade"]:
+                    decision = diplomacy_decisions[pair_key]
+                    offer = decision["trade_offer"]
+                    request = decision["trade_request"]
                     
-                    # Record trade in history
-                    self.diplomacy_history.append({
-                        "turn": self.current_turn,
-                        "type": "trade",
-                        "proposer": proposer.name,
-                        "responder": responder.name,
-                        "offer": {
-                            "resources": offer_resources,
-                            "population": offer_population,
-                            "technology": offer_technology
-                        },
-                        "request": {
-                            "resources": request_resources,
-                            "population": request_population,
-                            "technology": request_technology
-                        },
-                        "result": "accepted",
-                        "details": result
-                    })
-                    trade_handled = True
-                else:
-                    print(f"  {responder.name} rejects the trade.")
+                    # Extract trade details
+                    offer_resources = offer["resources"]
+                    offer_population = offer["population"]
+                    offer_technology = offer["technology"]
+                    request_resources = request["resources"]
+                    request_population = request["population"]
+                    request_technology = request["technology"]
                     
-                    # Record rejected trade in history
-                    self.diplomacy_history.append({
-                        "turn": self.current_turn,
-                        "type": "trade",
-                        "proposer": proposer.name,
-                        "responder": responder.name,
-                        "offer": {
-                            "resources": offer_resources,
-                            "population": offer_population,
-                            "technology": offer_technology
-                        },
-                        "request": {
-                            "resources": request_resources,
-                            "population": request_population,
-                            "technology": request_technology
-                        },
-                        "result": "rejected"
-                    })
-            else:
-                print(f"  Trade cannot be completed due to insufficient resources.")
-        
-        # Check if civ2 wants to trade (only if no trade has been handled yet)
-        if civ2_decision["trade"] and not trade_handled:
-            proposer = self.civ2
-            responder = self.civ1
-            ai = self.ai2
-            offer = civ2_decision["trade_offer"]
-            request = civ2_decision["trade_request"]
-            
-            # Extract trade details
-            offer_resources = offer["resources"]
-            offer_population = offer["population"]
-            offer_technology = offer["technology"]
-            request_resources = request["resources"]
-            request_population = request["population"]
-            request_technology = request["technology"]
-            
-            print(f"\n{proposer.name} proposes trade to {responder.name}:")
-            print(f"  Offers: {offer_resources} resources, {offer_population} population, {offer_technology} technology")
-            print(f"  Requests: {request_resources} resources, {request_population} population, {request_technology} technology")
-            
-            # Check if trade is possible (both have enough to offer)
-            if (proposer.resources >= offer_resources and
-                proposer.population >= offer_population and
-                proposer.technology >= offer_technology and
-                responder.resources >= request_resources and
-                responder.population >= request_population and
-                responder.technology >= request_technology):
-                
-                # Ask responder to accept trade
-                if responder.propose_trade(proposer, 
-                                         request_resources, request_population, request_technology,
-                                         offer_resources, offer_population, offer_technology):
-                    # Execute the trade
-                    result = proposer.execute_trade(responder, 
-                                                 offer_resources, offer_population, offer_technology,
-                                                 request_resources, request_population, request_technology)
-                    print(f"  {responder.name} accepts! {result}")
+                    print(f"\n{proposer.name} proposes trade to {responder.name}:")
+                    print(f"  Offers: {offer_resources} resources, {offer_population} population, {offer_technology} technology")
+                    print(f"  Requests: {request_resources} resources, {request_population} population, {request_technology} technology")
                     
-                    # Record trade in history
-                    self.diplomacy_history.append({
-                        "turn": self.current_turn,
-                        "type": "trade",
-                        "proposer": proposer.name,
-                        "responder": responder.name,
-                        "offer": {
-                            "resources": offer_resources,
-                            "population": offer_population,
-                            "technology": offer_technology
-                        },
-                        "request": {
-                            "resources": request_resources,
-                            "population": request_population,
-                            "technology": request_technology
-                        },
-                        "result": "accepted",
-                        "details": result
-                    })
-                    trade_handled = True
-                else:
-                    print(f"  {responder.name} rejects the trade.")
-                    
-                    # Record rejected trade in history
-                    self.diplomacy_history.append({
-                        "turn": self.current_turn,
-                        "type": "trade",
-                        "proposer": proposer.name,
-                        "responder": responder.name,
-                        "offer": {
-                            "resources": offer_resources,
-                            "population": offer_population,
-                            "technology": offer_technology
-                        },
-                        "request": {
-                            "resources": request_resources,
-                            "population": request_population,
-                            "technology": request_technology
-                        },
-                        "result": "rejected"
-                    })
-            else:
-                print(f"  Trade cannot be completed due to insufficient resources.")
+                    # Check if trade is possible (both have enough to offer)
+                    if (proposer.resources >= offer_resources and
+                        proposer.population >= offer_population and
+                        proposer.technology >= offer_technology and
+                        responder.resources >= request_resources and
+                        responder.population >= request_population and
+                        responder.technology >= request_technology):
+                        
+                        # Ask responder to accept trade
+                        if responder.propose_trade(proposer, 
+                                                 request_resources, request_population, request_technology,
+                                                 offer_resources, offer_population, offer_technology):
+                            # Execute the trade
+                            result = proposer.execute_trade(responder, 
+                                                         offer_resources, offer_population, offer_technology,
+                                                         request_resources, request_population, request_technology)
+                            print(f"  {responder.name} accepts! {result}")
+                            
+                            # Record trade in history
+                            self.diplomacy_history.append({
+                                "turn": self.current_turn,
+                                "type": "trade",
+                                "proposer": proposer.name,
+                                "responder": responder.name,
+                                "offer": {
+                                    "resources": offer_resources,
+                                    "population": offer_population,
+                                    "technology": offer_technology
+                                },
+                                "request": {
+                                    "resources": request_resources,
+                                    "population": request_population,
+                                    "technology": request_technology
+                                },
+                                "result": "accepted",
+                                "details": result
+                            })
+                        else:
+                            print(f"  {responder.name} rejects the trade.")
+                            
+                            # Record rejected trade in history
+                            self.diplomacy_history.append({
+                                "turn": self.current_turn,
+                                "type": "trade",
+                                "proposer": proposer.name,
+                                "responder": responder.name,
+                                "offer": {
+                                    "resources": offer_resources,
+                                    "population": offer_population,
+                                    "technology": offer_technology
+                                },
+                                "request": {
+                                    "resources": request_resources,
+                                    "population": request_population,
+                                    "technology": request_technology
+                                },
+                                "result": "rejected"
+                            })
+                    else:
+                        print(f"  Trade cannot be completed due to insufficient resources.")
         
-        # Handle war declarations (only one war per turn, prioritize civ1 then civ2)
-        war_handled = False
-        
-        # Check if civ1 wants to declare war
-        if civ1_decision["war"] and not war_handled:
-            attacker = self.civ1
-            defender = self.civ2
-            
-            # Check warmonger limit: max 2 wars per era (except last era)
-            if attacker.era != "Future" and attacker.wars_initiated >= 2:
-                print(f"\n{attacker.name} cannot declare more wars this era! (Limit: 2 wars per era)")
+        # Handle war declarations for all civilization pairs
+        for i, attacker_id in enumerate(civ_ids):
+            for j, defender_id in enumerate(civ_ids):
+                if i == j:  # Skip attacking oneself
+                    continue
                 
-                # Record failed war declaration
-                self.diplomacy_history.append({
-                    "turn": self.current_turn,
-                    "type": "war_declaration",
-                    "attacker": attacker.name,
-                    "defender": defender.name,
-                    "result": "failed",
-                    "reason": "war limit reached"
-                })
-            else:
-                print(f"\n{attacker.name} declares war on {defender.name}!")
-                result, plunder_resources, plunder_population = attacker.attack(defender)
+                attacker = self.civilizations[attacker_id]
+                defender = self.civilizations[defender_id]
+                pair_key = f"{attacker_id}_{defender_id}"
                 
-                print(f"  {result}")
-                if plunder_resources > 0 or plunder_population > 0:
-                    print(f"  {attacker.name} plundered {plunder_resources} resources and {plunder_population} population!")
-                
-                # Increment war count for attacker
-                attacker.wars_initiated += 1
-                
-                # Record war in history
-                self.diplomacy_history.append({
-                    "turn": self.current_turn,
-                    "type": "war",
-                    "attacker": attacker.name,
-                    "defender": defender.name,
-                    "result": result,
-                    "plunder": {
-                        "resources": plunder_resources,
-                        "population": plunder_population
-                    }
-                })
-                
-                # Apply war penalty: next turn's growth will be halved for the attacker
-                self.war_penalties["civ1"] = True
-                war_handled = True
-        
-        # Check if civ2 wants to declare war (only if no war has been handled yet)
-        if civ2_decision["war"] and not war_handled:
-            attacker = self.civ2
-            defender = self.civ1
-            
-            # Check warmonger limit: max 2 wars per era (except last era)
-            if attacker.era != "Future" and attacker.wars_initiated >= 2:
-                print(f"\n{attacker.name} cannot declare more wars this era! (Limit: 2 wars per era)")
-                
-                # Record failed war declaration
-                self.diplomacy_history.append({
-                    "turn": self.current_turn,
-                    "type": "war_declaration",
-                    "attacker": attacker.name,
-                    "defender": defender.name,
-                    "result": "failed",
-                    "reason": "war limit reached"
-                })
-            else:
-                print(f"\n{attacker.name} declares war on {defender.name}!")
-                result, plunder_resources, plunder_population = attacker.attack(defender)
-                
-                print(f"  {result}")
-                if plunder_resources > 0 or plunder_population > 0:
-                    print(f"  {attacker.name} plundered {plunder_resources} resources and {plunder_population} population!")
-                
-                # Increment war count for attacker
-                attacker.wars_initiated += 1
-                
-                # Record war in history
-                self.diplomacy_history.append({
-                    "turn": self.current_turn,
-                    "type": "war",
-                    "attacker": attacker.name,
-                    "defender": defender.name,
-                    "result": result,
-                    "plunder": {
-                        "resources": plunder_resources,
-                        "population": plunder_population
-                    }
-                })
-                
-                # Apply war penalty: next turn's growth will be halved for the attacker
-                self.war_penalties["civ2"] = True
-                war_handled = True
+                # Check if attacker wants to declare war on this specific defender
+                if pair_key in diplomacy_decisions and diplomacy_decisions[pair_key]["war"]:
+                    # Check warmonger limit: max 2 wars per era (except last era)
+                    if attacker.era != "Future" and attacker.wars_initiated >= 2:
+                        print(f"\n{attacker.name} cannot declare more wars this era! (Limit: 2 wars per era)")
+                        
+                        # Record failed war declaration
+                        self.diplomacy_history.append({
+                            "turn": self.current_turn,
+                            "type": "war_declaration",
+                            "attacker": attacker.name,
+                            "defender": defender.name,
+                            "result": "failed",
+                            "reason": "war limit reached"
+                        })
+                    else:
+                        print(f"\n{attacker.name} declares war on {defender.name}!")
+                        result, plunder_resources, plunder_population = attacker.attack(defender)
+                        
+                        print(f"  {result}")
+                        if plunder_resources > 0 or plunder_population > 0:
+                            print(f"  {attacker.name} plundered {plunder_resources} resources and {plunder_population} population!")
+                        
+                        # Increment war count for attacker
+                        attacker.wars_initiated += 1
+                        
+                        # Record war in history
+                        self.diplomacy_history.append({
+                            "turn": self.current_turn,
+                            "type": "war",
+                            "attacker": attacker.name,
+                            "defender": defender.name,
+                            "result": result,
+                            "plunder": {
+                                "resources": plunder_resources,
+                                "population": plunder_population
+                            }
+                        })
+                        
+                        # Apply war penalty: next turn's growth will be halved for the attacker
+                        self.war_penalties[attacker_id] = True
         
         print('='*60)
     
@@ -842,10 +735,13 @@ class CivilizationGame:
     
     def run(self):
         """Run the main game loop."""
+        # Print game start information
+        civ_count = len(self.civilizations)
         print("Starting AI Civilization Simulation!")
-        print(f"Two civilizations will compete for {self.max_turns} turns.")
-        print(f"{self.civ1.name} is controlled by aliyun AI (qwen-flash)")
-        print(f"{self.civ2.name} is controlled by aliyun AI (qwen-plus)")
+        print(f"{civ_count} civilizations will compete for {self.max_turns} turns.")
+        for civ_id, civ in self.civilizations.items():
+            model_info = self.model_info[civ_id]
+            print(f"{civ.name} is controlled by {model_info}")
         print("\nPress Ctrl+C to exit at any time.")
         
         try:
@@ -859,46 +755,64 @@ class CivilizationGame:
                     print(f"\nGame Over! {reason}")
                     break
                 
-                # Handle internal events for both civilizations
+                # Handle internal events for all civilizations
                 self.handle_internal_events()
                 
-                # Handle era events for both civilizations
-                self.handle_era_event(self.civ1, self.ai1, "civ1")
-                self.handle_era_event(self.civ2, self.ai2, "civ2")
+                # Handle era events for all civilizations
+                for civ_id, civ in self.civilizations.items():
+                    self.handle_era_event(civ, self.ai_controllers[civ_id], civ_id)
                 
                 # Apply active effects before diplomacy phase
-                self.apply_active_effects(self.civ1, "civ1")
-                self.apply_active_effects(self.civ2, "civ2")
+                for civ_id, civ in self.civilizations.items():
+                    self.apply_active_effects(civ, civ_id)
                 
                 # Diplomacy phase (trade and war)
                 self.handle_diplomacy()
                 
                 # Apply active effects before civilization turns
-                self.apply_active_effects(self.civ1, "civ1")
+                for civ_id, civ in self.civilizations.items():
+                    self.apply_active_effects(civ, civ_id)
                 
-                # Civilization 1's turn
-                self.handle_civilization_turn(self.civ1, self.civ2, self.ai1)
-                time.sleep(1)  # Pause for readability
+                # Civilization turns (parallel execution for better performance)
+                import threading
+                threads = []
                 
-                # Apply active effects before civilization 2's turn
-                self.apply_active_effects(self.civ2, "civ2")
+                # Create and start a thread for each civilization's turn
+                for civ_id, civ in self.civilizations.items():
+                    thread = threading.Thread(
+                        target=self.handle_civilization_turn,
+                        args=(civ, civ_id, self.ai_controllers[civ_id])
+                    )
+                    threads.append(thread)
+                    thread.start()
                 
-                # Civilization 2's turn
-                self.handle_civilization_turn(self.civ2, self.civ1, self.ai2)
-                time.sleep(1)  # Pause for readability
+                # Wait for all threads to complete
+                for thread in threads:
+                    thread.join()
                 
-                # Apply culture influence after both turns
+                time.sleep(0.5)  # Short pause for readability
+                
+                # Apply active effects after civilization turns
+                for civ_id, civ in self.civilizations.items():
+                    self.apply_active_effects(civ, civ_id)
+                
+                # Apply culture influence after all turns
                 print("\nCULTURE INFLUENCE PHASE")
                 print("="*60)
                 
-                # Both civilizations apply culture influence on each other
-                influence_result1 = self.civ1.apply_culture_influence(self.civ2)
-                if influence_result1:
-                    print(f"{influence_result1}")
-                
-                influence_result2 = self.civ2.apply_culture_influence(self.civ1)
-                if influence_result2:
-                    print(f"{influence_result2}")
+                # All civilizations apply culture influence on each other
+                civ_ids = list(self.civilizations.keys())
+                for i, attacker_id in enumerate(civ_ids):
+                    for j, defender_id in enumerate(civ_ids):
+                        if i == j:  # Skip influencing oneself
+                            continue
+                        
+                        attacker = self.civilizations[attacker_id]
+                        defender = self.civilizations[defender_id]
+                        
+                        influence_result = attacker.apply_culture_influence(defender)
+                        if influence_result:
+                            print(f"{influence_result}")
                 
                 print("="*60)
                 
@@ -919,9 +833,10 @@ class CivilizationGame:
         import json
         game_state = {
             "turn": self.current_turn,
-            "civ1": self.civ1.to_dict(),
-            "civ2": self.civ2.to_dict()
+            "civilizations": {}
         }
+        for civ_id, civ in self.civilizations.items():
+            game_state["civilizations"][civ_id] = civ.to_dict()
         with open(f"game_state_turn_{self.current_turn}.json", "w") as f:
             json.dump(game_state, f, indent=2)
     
@@ -931,24 +846,29 @@ class CivilizationGame:
         print("FINAL SUMMARY")
         print("="*60)
         
-        # Calculate scores
-        score1 = self.civ1.calculate_score()
-        score2 = self.civ2.calculate_score()
+        # Calculate scores for all civilizations
+        scores = {}
+        for civ_id, civ in self.civilizations.items():
+            scores[civ] = civ.calculate_score()
         
         # Compare final states
-        print(f"{self.civ1.name} vs {self.civ2.name}")
-        print(f"Era: {self.civ1.era} vs {self.civ2.era}")
-        print(f"Technology: {self.civ1.technology} vs {self.civ2.technology}")
-        print(f"Population: {self.civ1.population} vs {self.civ2.population}")
-        print(f"Military: {self.civ1.military} vs {self.civ2.military}")
-        print(f"Resources: {self.civ1.resources} vs {self.civ2.resources}")
+        print("CIVILIZATION COMPARISON:")
+        for civ_id, civ in self.civilizations.items():
+            print(f"\n{civ.name}:")
+            print(f"  Era: {civ.era}")
+            print(f"  Technology: {civ.technology}")
+            print(f"  Population: {civ.population}")
+            print(f"  Military: {civ.military}")
+            print(f"  Resources: {civ.resources}")
+            print(f"  Culture: {civ.culture}")
+            print(f"  Loyalty: {civ.loyalty}")
         
         print("\n" + "-"*60)
         print("DETAILED SCORING")
         print("-"*60)
         
         # Show scoring breakdown for each civilization
-        for civ in [self.civ1, self.civ2]:
+        for civ_id, civ in self.civilizations.items():
             print(f"\n{civ.name} Score Breakdown:")
             print(f"  Technology (40%): {civ.technology} × 4 = {civ.technology * 4} points")
             print(f"  Population (25%): {civ.population} × 0.25 = {round(civ.population * 0.25)} points")
@@ -997,24 +917,80 @@ class CivilizationGame:
         
         # Determine winner based on total score
         print(f"Final Scores:")
-        print(f"  {self.civ1.name}: {score1} points")
-        print(f"  {self.civ2.name}: {score2} points")
-        
-        if score1 > score2:
-            winner = self.civ1.name
-            margin = score1 - score2
-        elif score2 > score1:
-            winner = self.civ2.name
-            margin = score2 - score1
-        else:
-            winner = "Tie"
-            margin = 0
+        max_score = -1
+        winner = None
+        for civ, score in scores.items():
+            print(f"  {civ.name}: {score} points")
+            if score > max_score:
+                max_score = score
+                winner = civ.name
+                winning_civ = civ
+            elif score == max_score:
+                winner = "Tie"
         
         print(f"\nWinner: {winner}")
-        if margin > 0:
-            print(f"Winning Margin: {margin} points")
+        if winner != "Tie":
+            # Calculate winning margin
+            scores_list = sorted(scores.values(), reverse=True)
+            if len(scores_list) > 1:
+                margin = scores_list[0] - scores_list[1]
+                print(f"Winning Margin: {margin} points")
+        print("="*60)
+
+    def run_turn(self):
+        """Run a single turn of the game."""
+        # Print current state
+        self.print_game_state()
+        
+        # Handle era events for all civilizations
+        for civ_id, civ in self.civilizations.items():
+            self.handle_era_event(civ, self.ai_controllers[civ_id], civ_id)
+        
+        # Apply active effects before diplomacy phase
+        for civ_id, civ in self.civilizations.items():
+            self.apply_active_effects(civ, civ_id)
+        
+        # Diplomacy phase (trade and war)
+        self.handle_diplomacy()
+        
+        # Apply active effects before civilization turns
+        for civ_id, civ in self.civilizations.items():
+            self.apply_active_effects(civ, civ_id)
+        
+        # Civilization turns
+        for civ_id, civ in self.civilizations.items():
+            self.handle_civilization_turn(civ, civ_id, self.ai_controllers[civ_id])
+        
+        # Apply active effects after civilization turns
+        for civ_id, civ in self.civilizations.items():
+            self.apply_active_effects(civ, civ_id)
+        
+        # Apply culture influence after all turns
+        print("\nCULTURE INFLUENCE PHASE")
+        print("="*60)
+        
+        # All civilizations apply culture influence on each other
+        civ_ids = list(self.civilizations.keys())
+        for i, attacker_id in enumerate(civ_ids):
+            for j, defender_id in enumerate(civ_ids):
+                if i == j:  # Skip influencing oneself
+                    continue
+                
+                attacker = self.civilizations[attacker_id]
+                defender = self.civilizations[defender_id]
+                
+                influence_result = attacker.apply_culture_influence(defender)
+                if influence_result:
+                    print(f"{influence_result}")
+        
         print("="*60)
 
 if __name__ == "__main__":
-    game = CivilizationGame(model_name2="MiniMax-M2.5", model_type2="minimax")
+    # Test with 3 civilizations
+    civ_configs = [
+        {"name": "Atlantis", "color": "blue", "model_name": "qwen-flash", "model_type": "aliyun"},
+        {"name": "Eldorado", "color": "gold", "model_name": "abab6.5s-chat", "model_type": "minimax"},
+        {"name": "Zimbabwe", "color": "green", "model_name": "qwen-plus", "model_type": "aliyun"}
+    ]
+    game = CivilizationGame(civ_configs)
     game.run()

@@ -40,8 +40,24 @@ class AIController:
             self.api_key = config.get("aliyun_api_key")
             self.endpoint = "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation"
 
-    def _build_prompt(self, civ_state, opponent_state, turn_number):
+    def _build_prompt(self, civ_state, opponent_state, turn_number, all_opponents_data):
         """Build prompt for AI decision-making."""
+        # Build other civilizations information
+        other_civs_text = ""
+        if all_opponents_data:
+            other_civs_text += "\nOther Civilizations (All Known):\n"
+            for i, oc in enumerate(all_opponents_data):
+                other_civs_text += f"CIVILIZATION {i+1}:\n"
+                other_civs_text += f"- Name: {oc['name']}\n"
+                other_civs_text += f"- Era: {oc['era']}\n"
+                other_civs_text += f"- Resources: {oc['resources']}\n"
+                other_civs_text += f"- Population: {oc['population']}\n"
+                other_civs_text += f"- Military: {oc['military']}\n"
+                other_civs_text += f"- Technology: {oc['technology']}\n"
+                other_civs_text += f"- Culture: {oc['culture']}\n"
+                other_civs_text += f"- Loyalty: {oc['loyalty']}\n"
+                other_civs_text += "\n"
+        
         return f"""
 You are the leader of {self.civilization_name}, a civilization in a turn-based strategy game.
 
@@ -58,7 +74,7 @@ Your Civilization State:
 - Loyalty: {civ_state['loyalty']}
 - Action Points: {civ_state['current_action_points']}/{civ_state['action_points']}
 
-Opponent Civilization State:
+Primary Opponent Civilization State:
 - Name: {opponent_state['name']}
 - Era: {opponent_state['era']}
 - Resources: {opponent_state['resources']}
@@ -69,6 +85,7 @@ Opponent Civilization State:
 - Loyalty: {opponent_state['loyalty']}
 - Action Points: {opponent_state['current_action_points']}/{opponent_state['action_points']}
 
+{other_civs_text}
 Available Actions:
 1. develop_technology [amount] - Invest resources to develop technology. Resource Cost: amount * 20, Action Cost: 2
 2. build_military [amount] - Recruit soldiers and build weapons. Resource Cost: amount * 15, Action Cost: 2
@@ -118,7 +135,7 @@ Game Rules:
    - **Balance is key**: Maintain a good balance between population growth, technology development, military strength, and culture
    - **Long-term planning**: Consider the long-term effects of your decisions, not just immediate gains
    - **Adapt to your era**: Different eras require different strategies. For example, early eras focus on population and resources, while later eras emphasize technology and culture
-   - **Know your opponent**: Adjust your strategy based on your opponent's strengths and weaknesses. If they have a strong military, focus on defense; if they have high culture, counter with your own culture development
+   - **Know all opponents**: Consider all other civilizations when making decisions. Balance your relationships and strategies against each of them
    - **Technology drives progress**: Technology contributes 80% to era progression and unlocks better abilities
    - **Culture matters**: High culture improves loyalty and can influence enemy populations
    - **Loyalty is critical**: Low loyalty can lead to population loss and instability
@@ -135,7 +152,7 @@ gather_resources 3
 Your Decision:
 """
 
-    def get_decision(self, civ_state, opponent_state, turn_number):
+    def get_decision(self, civ_state, opponent_state, turn_number, all_opponents_data=None):
         """
         Get AI decisions for the current turn.
 
@@ -143,12 +160,17 @@ Your Decision:
             civ_state: Dictionary with civilization's current state
             opponent_state: Dictionary with opponent's current state
             turn_number: Current turn number
+            all_opponents_data: List of dictionaries with all other civilizations' states
 
         Returns:
             list: List of tuples (action_type, amount) where action_type is one of:
                   'develop_technology', 'build_military', 'grow_population', 'gather_resources'
         """
-        prompt = self._build_prompt(civ_state, opponent_state, turn_number)
+        # Default to empty list if all_opponents_data is not provided
+        if all_opponents_data is None:
+            all_opponents_data = []
+        
+        prompt = self._build_prompt(civ_state, opponent_state, turn_number, all_opponents_data)
 
         try:
             # Build payload based on model_type

@@ -12,23 +12,13 @@ PORT = 8000
 # Game state to be sent to the client
 game_state = {
     "turn": 0,
-    "civ1": None,
-    "civ2": None,
+    "civilizations": {},
     "game_ended": False,
     "reason": "",
-    "model_info": {
-        "civ1": "",
-        "civ2": ""
-    },
-    "action_history": {
-        "civ1": [],
-        "civ2": []
-    },
+    "model_info": {},
+    "action_history": {},
     "diplomacy_history": [],
-    "era_events": {
-        "civ1": [],
-        "civ2": []
-    },
+    "era_events": {},
     "internal_events_history": []
 }
 
@@ -541,87 +531,7 @@ HTML_TEMPLATE = """
             Turn <span id="turn">0</span>
         </div>
         
-        <div class="civilizations">
-            <div class="civ-panel" id="civ1-panel">
-                <div class="civ-name" id="civ1-name"><div class="civ-flag" id="civ1-flag"></div>Civilization 1</div>
-                <div class="ai-model" id="civ1-model">AI Model: qwen-flash</div>
-                <div class="civ-era" id="civ1-era">Primitive</div>
-                <div class="civ-image" id="civ1-image">Campfire</div>
-                
-                <!-- Collapsible resources section -->
-                <div class="collapsible-section">
-                    <div class="collapsible-header" onclick="toggleCollapse('civ1-resources-section')">
-                        <span class="section-title">Resources</span>
-                        <span class="collapse-icon">▼</span>
-                    </div>
-                    <div id="civ1-resources-section" class="collapsible-content">
-                        <div class="resources" id="civ1-resources"></div>
-                    </div>
-                </div>
-                
-                <!-- Collapsible Action history section -->
-                <div class="collapsible-section">
-                    <div class="collapsible-header" onclick="toggleCollapse('civ1-action-history-section')">
-                        <span class="section-title">Recent Actions</span>
-                        <span class="collapse-icon">▼</span>
-                    </div>
-                    <div id="civ1-action-history-section" class="collapsible-content">
-                        <div id="civ1-action-history"></div>
-                    </div>
-                </div>
-                
-                <!-- Collapsible Internal events section -->
-                <div class="collapsible-section">
-                    <div class="collapsible-header" onclick="toggleCollapse('civ1-internal-events-section')">
-                        <span class="section-title">Internal Events</span>
-                        <span class="collapse-icon">▼</span>
-                    </div>
-                    <div id="civ1-internal-events-section" class="collapsible-content">
-                        <div id="civ1-internal-events"></div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="civ-panel" id="civ2-panel">
-                <div class="civ-name" id="civ2-name"><div class="civ-flag" id="civ2-flag"></div>Civilization 2</div>
-                <div class="ai-model" id="civ2-model">AI Model: qwen-plus</div>
-                <div class="civ-era" id="civ2-era">Primitive</div>
-                <div class="civ-image" id="civ2-image">Campfire</div>
-                
-                <!-- Collapsible resources section -->
-                <div class="collapsible-section">
-                    <div class="collapsible-header" onclick="toggleCollapse('civ2-resources-section')">
-                        <span class="section-title">Resources</span>
-                        <span class="collapse-icon">▼</span>
-                    </div>
-                    <div id="civ2-resources-section" class="collapsible-content">
-                        <div class="resources" id="civ2-resources"></div>
-                    </div>
-                </div>
-                
-                <!-- Collapsible Action history section -->
-                <div class="collapsible-section">
-                    <div class="collapsible-header" onclick="toggleCollapse('civ2-action-history-section')">
-                        <span class="section-title">Recent Actions</span>
-                        <span class="collapse-icon">▼</span>
-                    </div>
-                    <div id="civ2-action-history-section" class="collapsible-content">
-                        <div id="civ2-action-history"></div>
-                    </div>
-                </div>
-                
-                <!-- Collapsible Internal events section -->
-                <div class="collapsible-section">
-                    <div class="collapsible-header" onclick="toggleCollapse('civ2-internal-events-section')">
-                        <span class="section-title">Internal Events</span>
-                        <span class="collapse-icon">▼</span>
-                    </div>
-                    <div id="civ2-internal-events-section" class="collapsible-content">
-                        <div id="civ2-internal-events"></div>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <div class="civilizations" id="civilizations-container"></div>
         
         <!-- Collapsible Diplomacy section -->
         <div class="collapsible-section">
@@ -682,6 +592,61 @@ HTML_TEMPLATE = """
     </div>
     
     <script>
+        // Generate civilization panels dynamically
+        function generateCivilizationPanels(civilizations) {
+            const container = document.getElementById('civilizations-container');
+            container.innerHTML = '';
+            
+            for (const civId in civilizations) {
+                const civ = civilizations[civId];
+                const panel = document.createElement('div');
+                panel.className = 'civ-panel';
+                panel.id = `${civId}-panel`;
+                
+                panel.innerHTML = `
+                    <div class="civ-name" id="${civId}-name"><div class="civ-flag" id="${civId}-flag"></div>${civ.name}</div>
+                    <div class="ai-model" id="${civId}-model">AI Model: ${civ.model_name}</div>
+                    <div class="civ-era" id="${civId}-era">${civ.era}</div>
+                    <div class="civ-image" id="${civId}-image">Campfire</div>
+                    
+                    <!-- Collapsible resources section -->
+                    <div class="collapsible-section">
+                        <div class="collapsible-header" onclick="toggleCollapse('${civId}-resources-section')">
+                            <span class="section-title">Resources</span>
+                            <span class="collapse-icon">▼</span>
+                        </div>
+                        <div id="${civId}-resources-section" class="collapsible-content">
+                            <div class="resources" id="${civId}-resources"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Collapsible Action history section -->
+                    <div class="collapsible-section">
+                        <div class="collapsible-header" onclick="toggleCollapse('${civId}-action-history-section')">
+                            <span class="section-title">Recent Actions</span>
+                            <span class="collapse-icon">▼</span>
+                        </div>
+                        <div id="${civId}-action-history-section" class="collapsible-content">
+                            <div id="${civId}-action-history"></div>
+                        </div>
+                    </div>
+                    
+                    <!-- Collapsible Internal events section -->
+                    <div class="collapsible-section">
+                        <div class="collapsible-header" onclick="toggleCollapse('${civId}-internal-events-section')">
+                            <span class="section-title">Internal Events</span>
+                            <span class="collapse-icon">▼</span>
+                        </div>
+                        <div id="${civId}-internal-events-section" class="collapsible-content">
+                            <div id="${civId}-internal-events"></div>
+                        </div>
+                    </div>
+                `;
+                
+                container.appendChild(panel);
+            }
+        }
+        
         // Update the game state from the server
         function updateGameState() {
             fetch('/game_state')
@@ -733,14 +698,16 @@ HTML_TEMPLATE = """
                     // Update turn
                     document.getElementById('turn').textContent = data.turn;
                     
-                    // Update civilization 1 with model info and action history
-                    updateCivilization('civ1', data.civ1, data.model_info.civ1, data.action_history.civ1);
+                    // Generate civilization panels if they don't exist
+                    const container = document.getElementById('civilizations-container');
+                    if (container.children.length === 0) {
+                        generateCivilizationPanels(data.civilizations);
+                    }
                     
-                    // Update civilization 2 with model info and action history
-                    updateCivilization('civ2', data.civ2, data.model_info.civ2, data.action_history.civ2);
-                    
-                    // Update diplomacy icons
-                    updateDiplomacyIcons(data.civ1, data.civ2);
+                    // Update all civilizations
+                    for (const civId in data.civilizations) {
+                        updateCivilization(civId, data.civilizations[civId], data.model_info[civId], data.action_history[civId]);
+                    }
                     
                     // Update diplomacy history
                     updateDiplomacyHistory(data.diplomacy_history);
@@ -886,7 +853,7 @@ HTML_TEMPLATE = """
             const eventsDiv = document.getElementById('era-events-content');
             eventsDiv.innerHTML = '';
             
-            // Combine events from both civilizations
+            // Combine events from all civilizations
             const allEvents = [];
             for (const civ in eraEvents) {
                 eraEvents[civ].forEach(event => {
@@ -908,7 +875,7 @@ HTML_TEMPLATE = """
                 eventDiv.className = 'era-event-item';
                 
                 let eventHTML = `<div class="turn">Turn ${event.turn}</div>`;
-                eventHTML += `<div class="event-name">${event.civ === 'civ1' ? 'Atlantis' : 'Eldorado'}: ${event.name}</div>`;
+                eventHTML += `<div class="event-name">${event.civ_name}: ${event.name}</div>`;
                 eventHTML += `<div>${event.description}</div>`;
                 eventHTML += `<div>Cost: ${JSON.stringify(event.cost)}</div>`;
                 eventHTML += `<div>Reward: ${JSON.stringify(event.reward)}</div>`;
@@ -978,70 +945,46 @@ HTML_TEMPLATE = """
         
         // Update internal events per civilization
         function updateInternalEvents(internalEventsHistory) {
-            // Get events for each civilization
-            const civ1Events = internalEventsHistory.filter(event => event.civ === 'civ1');
-            const civ2Events = internalEventsHistory.filter(event => event.civ === 'civ2');
+            // Get unique civilization IDs
+            const civIds = [...new Set(internalEventsHistory.map(event => event.civ))];
             
-            // Update civilization 1 internal events
-            const civ1EventsDiv = document.getElementById('civ1-internal-events');
-            civ1EventsDiv.innerHTML = '';
-            
-            // Get last 5 events for civ1
-            const recentCiv1Events = civ1Events.slice(-5).reverse();
-            recentCiv1Events.forEach(event => {
-                const eventDiv = document.createElement('div');
-                eventDiv.className = 'internal-event-item';
+            // Update internal events for each civilization
+            civIds.forEach(civId => {
+                // Get events for this civilization
+                const civEvents = internalEventsHistory.filter(event => event.civ === civId);
                 
-                let eventHTML = `<div class="turn">Turn ${event.turn}</div>`;
-                eventHTML += `<div class="event-name">${event.event_name}</div>`;
-                eventHTML += `<div class="description">${event.event_description}</div>`;
-                eventHTML += `<div class="decision">Decision: ${event.decision_name} - ${event.decision_description}</div>`;
+                // Get the events container for this civilization
+                const eventsDiv = document.getElementById(`${civId}-internal-events`);
+                if (!eventsDiv) return;
                 
-                // Display effects if any
-                if (event.effects && event.effects.length > 0) {
-                    eventHTML += '<div>Effects:';
-                    eventHTML += '<ul>';
-                    event.effects.forEach(effect => {
-                        eventHTML += `<li>${effect.type}: ${effect.resource} ${effect.change} (${effect.duration} turns)</li>`;
-                    });
-                    eventHTML += '</ul></div>';
-                }
+                eventsDiv.innerHTML = '';
                 
-                eventHTML += `<div>Result: ${event.result}</div>`;
-                
-                eventDiv.innerHTML = eventHTML;
-                civ1EventsDiv.appendChild(eventDiv);
-            });
-            
-            // Update civilization 2 internal events
-            const civ2EventsDiv = document.getElementById('civ2-internal-events');
-            civ2EventsDiv.innerHTML = '';
-            
-            // Get last 5 events for civ2
-            const recentCiv2Events = civ2Events.slice(-5).reverse();
-            recentCiv2Events.forEach(event => {
-                const eventDiv = document.createElement('div');
-                eventDiv.className = 'internal-event-item';
-                
-                let eventHTML = `<div class="turn">Turn ${event.turn}</div>`;
-                eventHTML += `<div class="event-name">${event.event_name}</div>`;
-                eventHTML += `<div class="description">${event.event_description}</div>`;
-                eventHTML += `<div class="decision">Decision: ${event.decision_name} - ${event.decision_description}</div>`;
-                
-                // Display effects if any
-                if (event.effects && event.effects.length > 0) {
-                    eventHTML += '<div>Effects:';
-                    eventHTML += '<ul>';
-                    event.effects.forEach(effect => {
-                        eventHTML += `<li>${effect.type}: ${effect.resource} ${effect.change} (${effect.duration} turns)</li>`;
-                    });
-                    eventHTML += '</ul></div>';
-                }
-                
-                eventHTML += `<div>Result: ${event.result}</div>`;
-                
-                eventDiv.innerHTML = eventHTML;
-                civ2EventsDiv.appendChild(eventDiv);
+                // Get last 5 events for this civilization
+                const recentCivEvents = civEvents.slice(-5).reverse();
+                recentCivEvents.forEach(event => {
+                    const eventDiv = document.createElement('div');
+                    eventDiv.className = 'internal-event-item';
+                    
+                    let eventHTML = `<div class="turn">Turn ${event.turn}</div>`;
+                    eventHTML += `<div class="event-name">${event.event_name}</div>`;
+                    eventHTML += `<div class="description">${event.event_description}</div>`;
+                    eventHTML += `<div class="decision">Decision: ${event.decision_name} - ${event.decision_description}</div>`;
+                    
+                    // Display effects if any
+                    if (event.effects && event.effects.length > 0) {
+                        eventHTML += '<div>Effects:';
+                        eventHTML += '<ul>';
+                        event.effects.forEach(effect => {
+                            eventHTML += `<li>${effect.type}: ${effect.resource} ${effect.change} (${effect.duration} turns)</li>`;
+                        });
+                        eventHTML += '</ul></div>';
+                    }
+                    
+                    eventHTML += `<div>Result: ${event.result}</div>`;
+                    
+                    eventDiv.innerHTML = eventHTML;
+                    eventsDiv.appendChild(eventDiv);
+                });
             });
         }
         
@@ -1127,8 +1070,12 @@ def update_game_state():
         if game:
             # Update game state
             game_state["turn"] = game.current_turn
-            game_state["civ1"] = game.civ1.to_dict()
-            game_state["civ2"] = game.civ2.to_dict()
+            
+            # Update all civilizations
+            game_state["civilizations"] = {}
+            for civ_id, civ in game.civilizations.items():
+                game_state["civilizations"][civ_id] = civ.to_dict()
+            
             game_state["game_ended"] = game.game_ended if hasattr(game, 'game_ended') else False
             game_state["reason"] = game.reason if hasattr(game, 'reason') else ""
             
@@ -1147,15 +1094,12 @@ def update_game_state():
             # Update era events history
             if hasattr(game, 'era_events_history'):
                 # Convert era events history to UI format
-                era_events_ui = {
-                    "civ1": [],
-                    "civ2": []
-                }
+                era_events_ui = {}
                 for event in game.era_events_history:
-                    if event["civ"] == "civ1":
-                        era_events_ui["civ1"].append(event)
-                    elif event["civ"] == "civ2":
-                        era_events_ui["civ2"].append(event)
+                    civ_id = event["civ"]
+                    if civ_id not in era_events_ui:
+                        era_events_ui[civ_id] = []
+                    era_events_ui[civ_id].append(event)
                 game_state["era_events"] = era_events_ui
             
             # Update final results if game ended
@@ -1181,7 +1125,12 @@ def update_game_state():
 def run_game():
     global game
     # Pass correct model parameters to CivilizationGame
-    game = CivilizationGame(model_name1="qwen-flash", model_name2="abab6.5g-chat", model_type1="aliyun", model_type2="minimax")
+    civ_configs = [
+        {"name": "Atlantis", "color": "blue", "model_name": "qwen-flash", "model_type": "aliyun"},
+        {"name": "Eldorado", "color": "gold", "model_name": "abab6.5s-chat", "model_type": "minimax"},
+        {"name": "Zimbabwe", "color": "green", "model_name": "glm-4.7", "model_type": "aliyun"}
+    ]
+    game = CivilizationGame(civ_configs)
     
     # Add game ended flag to the game object
     game.game_ended = False
@@ -1189,10 +1138,7 @@ def run_game():
     
     # Ensure action_history, and diplomacy_history are initialized
     if not hasattr(game, 'action_history'):
-        game.action_history = {
-            "civ1": [],
-            "civ2": []
-        }
+        game.action_history = {civ_id: [] for civ_id in game.civilizations}
     
     if not hasattr(game, 'diplomacy_history'):
         game.diplomacy_history = []
@@ -1206,45 +1152,16 @@ def run_game():
                 game.reason = reason
                 break
             
-            # Handle internal events for both civilizations
+            # Handle internal events for all civilizations
             game.handle_internal_events()
             
-            # Handle era events for both civilizations
-            game.handle_era_event(game.civ1, game.ai1, "civ1")
-            game.handle_era_event(game.civ2, game.ai2, "civ2")
+            # Run the main game loop
+            game.run_turn()
             
-            # Apply active effects before diplomacy phase
-            game.apply_active_effects(game.civ1, "civ1")
-            game.apply_active_effects(game.civ2, "civ2")
-            
-            # Diplomacy phase (trade and war)
-            game.handle_diplomacy()
-            
-            # Apply active effects before civilization turns
-            game.apply_active_effects(game.civ1, "civ1")
-            game.apply_active_effects(game.civ2, "civ2")
-            
-            # Civilization 1's turn
-            game.handle_civilization_turn(game.civ1, game.civ2, game.ai1)
-            time.sleep(1)  # Pause for readability
-            
-            # Update game state
+            # Update game state for all civilizations
             game_state["turn"] = game.current_turn
-            game_state["civ1"] = game.civ1.to_dict()
-            game_state["civ2"] = game.civ2.to_dict()
-            
-            # Civilization 2's turn
-            game.handle_civilization_turn(game.civ2, game.civ1, game.ai2)
-            time.sleep(1)  # Pause for readability
-            
-            # Apply culture influence after both turns
-            game.civ1.apply_culture_influence(game.civ2)
-            game.civ2.apply_culture_influence(game.civ1)
-            
-            # Update game state
-            game_state["turn"] = game.current_turn
-            game_state["civ1"] = game.civ1.to_dict()
-            game_state["civ2"] = game.civ2.to_dict()
+            for civ_id, civ in game.civilizations.items():
+                game_state[civ_id] = civ.to_dict()
             
             # Save game state every 10 turns
             if game.current_turn % 10 == 0:
@@ -1262,30 +1179,33 @@ def run_game():
         game.reason = "Game completed"
         
         # Calculate final scores and winner
-        score1 = game.civ1.calculate_score()
-        score2 = game.civ2.calculate_score()
+        final_scores = {}
+        for civ_id, civ in game.civilizations.items():
+            final_scores[civ.name] = civ.calculate_score()
         
-        if score1 > score2:
-            game.winner = game.civ1.name
-            game.winning_score = score1
-            game.losing_score = score2
-            game.winning_margin = score1 - score2
-        elif score2 > score1:
-            game.winner = game.civ2.name
-            game.winning_score = score2
-            game.losing_score = score1
-            game.winning_margin = score2 - score1
+        # Determine winner
+        max_score = -1
+        winner = None
+        for civ_name, score in final_scores.items():
+            if score > max_score:
+                max_score = score
+                winner = civ_name
+            elif score == max_score:
+                winner = "Tie"
+        
+        game.winner = winner
+        game.final_scores = final_scores
+        
+        # Calculate winning margin if there's a clear winner
+        if winner != "Tie":
+            scores_list = sorted(final_scores.values(), reverse=True)
+            game.winning_score = scores_list[0]
+            game.losing_score = scores_list[1]
+            game.winning_margin = scores_list[0] - scores_list[1]
         else:
-            game.winner = "Tie"
-            game.winning_score = score1
-            game.losing_score = score2
+            game.winning_score = max_score
+            game.losing_score = max_score
             game.winning_margin = 0
-        
-        # Store final scores for display
-        game.final_scores = {
-            game.civ1.name: score1,
-            game.civ2.name: score2
-        }
 
 if __name__ == "__main__":
     # Start the web server in a separate thread
