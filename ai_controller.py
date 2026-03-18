@@ -593,11 +593,21 @@ Current Event:
 Name: {event_data['name']}
 Description: {event_data['description']}
 
+Strategic Guidelines for Event Decisions:
+1. **Align with current needs**: Choose options that address your civilization's current weaknesses or enhance its strengths
+2. **Consider long-term vs short-term**: Evaluate both immediate benefits and long-term consequences
+3. **Resource availability**: Ensure you can afford any costs associated with the option
+4. **Balance development**: Maintain a balance between military, technology, culture, and population growth
+5. **Adapt to era**: Different eras favor different strategies (early: population/resources, late: technology/culture)
+6. **Loyalty is key**: Prioritize options that maintain or improve loyalty
+7. **Opportunity cost**: Consider what you might be giving up by choosing one option over another
+8. **Risk assessment**: Evaluate the risks and rewards of each option
+
 Available Options:
 {options_text}
 
 Your Decision:
-Please choose one option by specifying its key. Use the format:
+Carefully analyze each option and choose the one that best serves your civilization's interests. Use the format:
 DECISION: [option_key]
 
 For example:
