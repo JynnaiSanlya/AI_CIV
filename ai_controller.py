@@ -111,6 +111,18 @@ Game Rules:
    - When gathering resources, you should gather as much as possible up to the dynamic limit, since there is no cost to gather resources
    - Always gather resources at the maximum possible amount if you have action points left and no other actions to perform
 
+6. Strategic Guidelines:
+   - **Balance is key**: Maintain a good balance between population growth, technology development, military strength, and culture
+   - **Long-term planning**: Consider the long-term effects of your decisions, not just immediate gains
+   - **Adapt to your era**: Different eras require different strategies. For example, early eras focus on population and resources, while later eras emphasize technology and culture
+   - **Know your opponent**: Adjust your strategy based on your opponent's strengths and weaknesses. If they have a strong military, focus on defense; if they have high culture, counter with your own culture development
+   - **Technology drives progress**: Technology contributes 80% to era progression and unlocks better abilities
+   - **Culture matters**: High culture improves loyalty and can influence enemy populations
+   - **Loyalty is critical**: Low loyalty can lead to population loss and instability
+   - **Resource management**: Ensure you have enough resources to support your growth plans
+   - **Military strength**: Maintain a balanced military to defend against attacks and deter aggression
+   - **Seize opportunities**: Take advantage of events and trade opportunities that arise
+
 Example Decision:
 grow_population 2
 develop_technology 1
