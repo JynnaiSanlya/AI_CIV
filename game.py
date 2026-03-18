@@ -9,20 +9,22 @@ from era_event import EraEvent
 class CivilizationGame:
     """Main game class for AI civilization simulation."""
     
-    def __init__(self, model_name1="qwen-flash", model_name2="qwen-plus"):
+    def __init__(self, model_name1="qwen-flash", model_name2="qwen-plus", model_type1="aliyun", model_type2="aliyun"):
         """Initialize the game with two civilizations.
         
         Args:
-            model_name1: Specific model name for civilization 1 (e.g., "qwen-flash")
-            model_name2: Specific model name for civilization 2 (e.g., "qwen-plus")
+            model_name1: Specific model name for civilization 1 (e.g., "qwen-flash", "abab6-chat")
+            model_name2: Specific model name for civilization 2 (e.g., "qwen-plus", "abab6-chat")
+            model_type1: Model API type for civilization 1 (e.g., "aliyun", "minimax")
+            model_type2: Model API type for civilization 2 (e.g., "aliyun", "minimax")
         """
         # Create two civilizations
         self.civ1 = Civilization("Atlantis", "blue")
         self.civ2 = Civilization("Eldorado", "gold")
         
-        # Create AI controllers using different Alibaba models
-        self.ai1 = AIController(self.civ1.name, model_name=model_name1)
-        self.ai2 = AIController(self.civ2.name, model_name=model_name2)
+        # Create AI controllers with specified model types
+        self.ai1 = AIController(self.civ1.name, model_name=model_name1, model_type=model_type1)
+        self.ai2 = AIController(self.civ2.name, model_name=model_name2, model_type=model_type2)
         
         # Game settings
         self.max_turns = 50  # Increased from 10 to 50 for longer games
@@ -30,8 +32,8 @@ class CivilizationGame:
         
         # Model information for display
         self.model_info = {
-            "civ1": model_name1,
-            "civ2": model_name2
+            "civ1": f"{model_type1}:{model_name1}",
+            "civ2": f"{model_type2}:{model_name2}"
         }
         
         # Diplomacy history

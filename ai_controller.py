@@ -7,15 +7,16 @@ import urllib.error
 class AIController:
     """Controls a civilization using AI API for decision-making."""
 
-    def __init__(self, civilization_name, model_name="qwen-flash"):
+    def __init__(self, civilization_name, model_name="qwen-flash", model_type="aliyun"):
         """Initialize AI controller with API client.
         
         Args:
             civilization_name: Name of the civilization being controlled
-            model_name: Specific model name to use (e.g., "qwen-flash", "qwen-plus")
+            model_name: Specific model name to use (e.g., "qwen-flash", "qwen-plus", "abab6-chat")
+            model_type: Type of model API to use (e.g., "aliyun", "minimax")
         """
         self.civilization_name = civilization_name
-        self.model_type = "aliyun"
+        self.model_type = model_type
         self.model = model_name
         self.conversation_history = []
         
@@ -23,8 +24,18 @@ class AIController:
         with open("config.json", "r") as f:
             config = json.load(f)
         
-        self.api_key = config.get("aliyun_api_key")
-        self.endpoint = "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation"
+        # Configure API based on model_type
+        if self.model_type == "aliyun":
+            self.api_key = config.get("aliyun_api_key")
+            self.endpoint = "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation"
+        elif self.model_type == "minimax":
+            self.api_key = config.get("minimax_api_key")
+            self.endpoint = "https://api.minimax.chat/v1/text/chatcompletion"
+        else:
+            # Default to aliyun if model_type is unknown
+            self.model_type = "aliyun"
+            self.api_key = config.get("aliyun_api_key")
+            self.endpoint = "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation"
 
     def _build_prompt(self, civ_state, opponent_state, turn_number):
         """Build prompt for AI decision-making."""
@@ -125,17 +136,44 @@ Your Decision:
         prompt = self._build_prompt(civ_state, opponent_state, turn_number)
 
         try:
-            # Call Aliyun DashScope API using urllib
-            payload = {
-                "model": self.model,
-                "input": {
-                    "prompt": prompt
-                },
-                "parameters": {
-                    "max_tokens": 1024,
-                    "temperature": 0.7
+            # Build payload based on model_type
+            if self.model_type == "aliyun":
+                # Call Aliyun DashScope API
+                payload = {
+                    "model": self.model,
+                    "input": {
+                        "prompt": prompt
+                    },
+                    "parameters": {
+                        "max_tokens": 1024,
+                        "temperature": 0.7
+                    }
                 }
-            }
+                
+                headers = {
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json"
+                }
+            elif self.model_type == "minimax":
+                # Call MiniMax API
+                payload = {
+                    "model": self.model,
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ],
+                    "temperature": 0.7,
+                    "max_tokens": 1024
+                }
+                
+                headers = {
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json"
+                }
+            else:
+                raise Exception(f"Unsupported model type: {self.model_type}")
             
             # Convert payload to JSON string
             json_payload = json.dumps(payload).encode('utf-8')
@@ -144,24 +182,31 @@ Your Decision:
             req = urllib.request.Request(
                 self.endpoint,
                 data=json_payload,
-                headers={
-                    "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json"
-                }
+                headers=headers
             )
             
-            # Send request
-            with urllib.request.urlopen(req) as response:
+            # Send request with timeout
+            with urllib.request.urlopen(req, timeout=10) as response:
                 response_text_raw = response.read().decode('utf-8')
                 response_data = json.loads(response_text_raw)
             
-            # Check if response has output field (success)
-            if "output" in response_data:
-                response_text = response_data.get("output", {}).get("text", "")
-            else:
-                # Handle error case
-                error_msg = response_data.get("message", f"Unknown error. Response: {response_text_raw}")
-                raise Exception(f"Aliyun API error: {error_msg}")
+            # Parse response based on model_type
+            if self.model_type == "aliyun":
+                # Check if response has output field (success)
+                if "output" in response_data:
+                    response_text = response_data.get("output", {}).get("text", "")
+                else:
+                    # Handle error case
+                    error_msg = response_data.get("message", f"Unknown error. Response: {response_text_raw}")
+                    raise Exception(f"Aliyun API error: {error_msg}")
+            elif self.model_type == "minimax":
+                # Check if response has choices field (success)
+                if "choices" in response_data:
+                    response_text = response_data.get("choices", [{}])[0].get("message", {}).get("content", "")
+                else:
+                    # Handle error case
+                    error_msg = response_data.get("error", {}).get("message", f"Unknown error. Response: {response_text_raw}")
+                    raise Exception(f"MiniMax API error: {error_msg}")
 
             # Extract all actions from response using regex
             actions = []
@@ -200,17 +245,44 @@ Your Decision:
         prompt = self._build_diplomacy_prompt(civ_state, opponent_state, turn_number, wars_initiated)
 
         try:
-            # Call Aliyun DashScope API using urllib
-            payload = {
-                "model": self.model,
-                "input": {
-                    "prompt": prompt
-                },
-                "parameters": {
-                    "max_tokens": 1024,
-                    "temperature": 0.7
+            # Build payload based on model_type
+            if self.model_type == "aliyun":
+                # Call Aliyun DashScope API
+                payload = {
+                    "model": self.model,
+                    "input": {
+                        "prompt": prompt
+                    },
+                    "parameters": {
+                        "max_tokens": 1024,
+                        "temperature": 0.7
+                    }
                 }
-            }
+                
+                headers = {
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json"
+                }
+            elif self.model_type == "minimax":
+                # Call MiniMax API
+                payload = {
+                    "model": self.model,
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ],
+                    "temperature": 0.7,
+                    "max_tokens": 1024
+                }
+                
+                headers = {
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json"
+                }
+            else:
+                raise Exception(f"Unsupported model type: {self.model_type}")
             
             # Convert payload to JSON string
             json_payload = json.dumps(payload).encode('utf-8')
@@ -219,24 +291,31 @@ Your Decision:
             req = urllib.request.Request(
                 self.endpoint,
                 data=json_payload,
-                headers={
-                    "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json"
-                }
+                headers=headers
             )
             
-            # Send request
-            with urllib.request.urlopen(req) as response:
+            # Send request with timeout
+            with urllib.request.urlopen(req, timeout=10) as response:
                 response_text_raw = response.read().decode('utf-8')
                 response_data = json.loads(response_text_raw)
             
-            # Check if response has output field (success)
-            if "output" in response_data:
-                response_text = response_data.get("output", {}).get("text", "")
-            else:
-                # Handle error case
-                error_msg = response_data.get("message", f"Unknown error. Response: {response_text_raw}")
-                raise Exception(f"Aliyun API error: {error_msg}")
+            # Parse response based on model_type
+            if self.model_type == "aliyun":
+                # Check if response has output field (success)
+                if "output" in response_data:
+                    response_text = response_data.get("output", {}).get("text", "")
+                else:
+                    # Handle error case
+                    error_msg = response_data.get("message", f"Unknown error. Response: {response_text_raw}")
+                    raise Exception(f"Aliyun API error: {error_msg}")
+            elif self.model_type == "minimax":
+                # Check if response has choices field (success)
+                if "choices" in response_data:
+                    response_text = response_data.get("choices", [{}])[0].get("message", {}).get("content", "")
+                else:
+                    # Handle error case
+                    error_msg = response_data.get("error", {}).get("message", f"Unknown error. Response: {response_text_raw}")
+                    raise Exception(f"MiniMax API error: {error_msg}")
 
             # Parse diplomacy decision
             diplomacy_decision = {
@@ -378,17 +457,44 @@ Your Decision:
         prompt = self._build_internal_event_prompt(civ_state, event_data)
 
         try:
-            # Call Aliyun DashScope API using urllib
-            payload = {
-                "model": self.model,
-                "input": {
-                    "prompt": prompt
-                },
-                "parameters": {
-                    "max_tokens": 512,
-                    "temperature": 0.7
+            # Build payload based on model_type
+            if self.model_type == "aliyun":
+                # Call Aliyun DashScope API
+                payload = {
+                    "model": self.model,
+                    "input": {
+                        "prompt": prompt
+                    },
+                    "parameters": {
+                        "max_tokens": 512,
+                        "temperature": 0.7
+                    }
                 }
-            }
+                
+                headers = {
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json"
+                }
+            elif self.model_type == "minimax":
+                # Call MiniMax API
+                payload = {
+                    "model": self.model,
+                    "messages": [
+                        {
+                            "role": "user",
+                            "content": prompt
+                        }
+                    ],
+                    "temperature": 0.7,
+                    "max_tokens": 512
+                }
+                
+                headers = {
+                    "Authorization": f"Bearer {self.api_key}",
+                    "Content-Type": "application/json"
+                }
+            else:
+                raise Exception(f"Unsupported model type: {self.model_type}")
             
             # Convert payload to JSON string
             json_payload = json.dumps(payload).encode('utf-8')
@@ -397,10 +503,7 @@ Your Decision:
             req = urllib.request.Request(
                 self.endpoint,
                 data=json_payload,
-                headers={
-                    "Authorization": f"Bearer {self.api_key}",
-                    "Content-Type": "application/json"
-                }
+                headers=headers
             )
             
             # Send request with timeout
@@ -408,13 +511,23 @@ Your Decision:
                 response_text_raw = response.read().decode('utf-8')
                 response_data = json.loads(response_text_raw)
             
-            # Check if response has output field (success)
-            if "output" in response_data:
-                response_text = response_data.get("output", {}).get("text", "")
-            else:
-                # Handle error case
-                error_msg = response_data.get("message", f"Unknown error. Response: {response_text_raw}")
-                raise Exception(f"Aliyun API error: {error_msg}")
+            # Parse response based on model_type
+            if self.model_type == "aliyun":
+                # Check if response has output field (success)
+                if "output" in response_data:
+                    response_text = response_data.get("output", {}).get("text", "")
+                else:
+                    # Handle error case
+                    error_msg = response_data.get("message", f"Unknown error. Response: {response_text_raw}")
+                    raise Exception(f"Aliyun API error: {error_msg}")
+            elif self.model_type == "minimax":
+                # Check if response has choices field (success)
+                if "choices" in response_data:
+                    response_text = response_data.get("choices", [{}])[0].get("message", {}).get("content", "")
+                else:
+                    # Handle error case
+                    error_msg = response_data.get("error", {}).get("message", f"Unknown error. Response: {response_text_raw}")
+                    raise Exception(f"MiniMax API error: {error_msg}")
 
             # Extract option key from response
             import re
