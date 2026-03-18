@@ -471,6 +471,66 @@ HTML_TEMPLATE = """
             margin-top: 5px;
             color: #2ecc71;
         }
+        
+        /* Collapsible sections */
+        .collapsible-section {
+            background-color: #2c2c2c;
+            border: 2px solid #444;
+            border-radius: 10px;
+            margin-bottom: 15px;
+            overflow: hidden;
+        }
+        
+        .collapsible-header {
+            background-color: #333;
+            padding: 15px 20px;
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background-color 0.3s ease;
+        }
+        
+        .collapsible-header:hover {
+            background-color: #3a3a3a;
+        }
+        
+        .section-title {
+            font-size: 18px;
+            font-weight: bold;
+            color: #4a90e2;
+        }
+        
+        .collapse-icon {
+            font-size: 12px;
+            color: #f39c12;
+            transition: transform 0.3s ease;
+        }
+        
+        .collapsible-header.collapsed .collapse-icon {
+            transform: rotate(-90deg);
+        }
+        
+        .collapsible-content {
+            padding: 15px 20px;
+            background-color: #2c2c2c;
+            max-height: 1000px;
+            overflow: hidden;
+            transition: all 0.3s ease;
+        }
+        
+        .collapsible-content.collapsed {
+            max-height: 0;
+            padding: 0 20px;
+        }
+        
+        /* Section headers for action history and internal events */
+        .section-header {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #4a90e2;
+        }
     </style>
 </head>
 <body>
@@ -487,10 +547,38 @@ HTML_TEMPLATE = """
                 <div class="ai-model" id="civ1-model">AI Model: qwen-flash</div>
                 <div class="civ-era" id="civ1-era">Primitive</div>
                 <div class="civ-image" id="civ1-image">Campfire</div>
-                <div class="resources" id="civ1-resources"></div>
-                <div class="action-history">
-                    <div class="action-history-title">Recent Actions</div>
-                    <div id="civ1-action-history"></div>
+                
+                <!-- Collapsible resources section -->
+                <div class="collapsible-section">
+                    <div class="collapsible-header" onclick="toggleCollapse('civ1-resources-section')">
+                        <span class="section-title">Resources</span>
+                        <span class="collapse-icon">▼</span>
+                    </div>
+                    <div id="civ1-resources-section" class="collapsible-content">
+                        <div class="resources" id="civ1-resources"></div>
+                    </div>
+                </div>
+                
+                <!-- Collapsible Action history section -->
+                <div class="collapsible-section">
+                    <div class="collapsible-header" onclick="toggleCollapse('civ1-action-history-section')">
+                        <span class="section-title">Recent Actions</span>
+                        <span class="collapse-icon">▼</span>
+                    </div>
+                    <div id="civ1-action-history-section" class="collapsible-content">
+                        <div id="civ1-action-history"></div>
+                    </div>
+                </div>
+                
+                <!-- Collapsible Internal events section -->
+                <div class="collapsible-section">
+                    <div class="collapsible-header" onclick="toggleCollapse('civ1-internal-events-section')">
+                        <span class="section-title">Internal Events</span>
+                        <span class="collapse-icon">▼</span>
+                    </div>
+                    <div id="civ1-internal-events-section" class="collapsible-content">
+                        <div id="civ1-internal-events"></div>
+                    </div>
                 </div>
             </div>
             
@@ -499,47 +587,88 @@ HTML_TEMPLATE = """
                 <div class="ai-model" id="civ2-model">AI Model: qwen-plus</div>
                 <div class="civ-era" id="civ2-era">Primitive</div>
                 <div class="civ-image" id="civ2-image">Campfire</div>
-                <div class="resources" id="civ2-resources"></div>
-                <div class="action-history">
-                    <div class="action-history-title">Recent Actions</div>
-                    <div id="civ2-action-history"></div>
+                
+                <!-- Collapsible resources section -->
+                <div class="collapsible-section">
+                    <div class="collapsible-header" onclick="toggleCollapse('civ2-resources-section')">
+                        <span class="section-title">Resources</span>
+                        <span class="collapse-icon">▼</span>
+                    </div>
+                    <div id="civ2-resources-section" class="collapsible-content">
+                        <div class="resources" id="civ2-resources"></div>
+                    </div>
+                </div>
+                
+                <!-- Collapsible Action history section -->
+                <div class="collapsible-section">
+                    <div class="collapsible-header" onclick="toggleCollapse('civ2-action-history-section')">
+                        <span class="section-title">Recent Actions</span>
+                        <span class="collapse-icon">▼</span>
+                    </div>
+                    <div id="civ2-action-history-section" class="collapsible-content">
+                        <div id="civ2-action-history"></div>
+                    </div>
+                </div>
+                
+                <!-- Collapsible Internal events section -->
+                <div class="collapsible-section">
+                    <div class="collapsible-header" onclick="toggleCollapse('civ2-internal-events-section')">
+                        <span class="section-title">Internal Events</span>
+                        <span class="collapse-icon">▼</span>
+                    </div>
+                    <div id="civ2-internal-events-section" class="collapsible-content">
+                        <div id="civ2-internal-events"></div>
+                    </div>
                 </div>
             </div>
         </div>
         
-        <div class="diplomacy">
-            <div class="diplomacy-title">Diplomacy</div>
-            <div class="diplomacy-content">
-                <div class="civ-relation">
-                    <div class="civ-icon era-primitive" id="civ1-relation-icon"></div>
-                    <div id="civ1-relation-name">Civilization 1</div>
-                </div>
-                
-                <div class="actions">
-                    <div class="action-icon action-trade">Trade</div>
-                    <div class="action-icon action-war">War</div>
-                </div>
-                
-                <div class="civ-relation">
-                    <div id="civ2-relation-name">Civilization 2</div>
-                    <div class="civ-icon era-primitive" id="civ2-relation-icon"></div>
+        <!-- Collapsible Diplomacy section -->
+        <div class="collapsible-section">
+            <div class="collapsible-header" onclick="toggleCollapse('diplomacy-section')">
+                <span class="section-title">Diplomacy</span>
+                <span class="collapse-icon">▼</span>
+            </div>
+            <div id="diplomacy-section" class="collapsible-content">
+                <div class="diplomacy-content">
+                    <div class="civ-relation">
+                        <div class="civ-icon era-primitive" id="civ1-relation-icon"></div>
+                        <div id="civ1-relation-name">Civilization 1</div>
+                    </div>
+                    
+                    <div class="actions">
+                        <div class="action-icon action-trade">Trade</div>
+                        <div class="action-icon action-war">War</div>
+                    </div>
+                    
+                    <div class="civ-relation">
+                        <div id="civ2-relation-name">Civilization 2</div>
+                        <div class="civ-icon era-primitive" id="civ2-relation-icon"></div>
+                    </div>
                 </div>
             </div>
         </div>
         
-        <div class="diplomacy-history">
-            <div class="diplomacy-history-title">Diplomacy History</div>
-            <div id="diplomacy-history-content"></div>
+        <!-- Collapsible Diplomacy History section -->
+        <div class="collapsible-section">
+            <div class="collapsible-header" onclick="toggleCollapse('diplomacy-history-section')">
+                <span class="section-title">Diplomacy History</span>
+                <span class="collapse-icon">▼</span>
+            </div>
+            <div id="diplomacy-history-section" class="collapsible-content">
+                <div id="diplomacy-history-content"></div>
+            </div>
         </div>
         
-        <div class="era-events">
-            <div class="era-events-title">Era Events</div>
-            <div id="era-events-content"></div>
-        </div>
-        
-        <div class="internal-events">
-            <div class="internal-events-title">Internal Events</div>
-            <div id="internal-events-content"></div>
+        <!-- Collapsible Era Events section -->
+        <div class="collapsible-section">
+            <div class="collapsible-header" onclick="toggleCollapse('era-events-section')">
+                <span class="section-title">Era Events</span>
+                <span class="collapse-icon">▼</span>
+            </div>
+            <div id="era-events-section" class="collapsible-content">
+                <div id="era-events-content"></div>
+            </div>
         </div>
         
         <div id="game-over" class="game-over" style="display: none;"></div>
@@ -827,6 +956,15 @@ HTML_TEMPLATE = """
             });
         }
         
+        // Toggle collapse functionality
+        function toggleCollapse(sectionId) {
+            const header = document.querySelector(`[onclick="toggleCollapse('${sectionId}')"]`);
+            const content = document.getElementById(sectionId);
+            
+            header.classList.toggle('collapsed');
+            content.classList.toggle('collapsed');
+        }
+        
         // Update diplomacy icons
         function updateDiplomacyIcons(civ1, civ2) {
             const civ1Icon = document.getElementById('civ1-relation-icon');
@@ -836,6 +974,75 @@ HTML_TEMPLATE = """
             const civ2Icon = document.getElementById('civ2-relation-icon');
             civ2Icon.className = `civ-icon era-${civ2.era.toLowerCase()}`;
             document.getElementById('civ2-relation-name').textContent = civ2.name;
+        }
+        
+        // Update internal events per civilization
+        function updateInternalEvents(internalEventsHistory) {
+            // Get events for each civilization
+            const civ1Events = internalEventsHistory.filter(event => event.civ === 'civ1');
+            const civ2Events = internalEventsHistory.filter(event => event.civ === 'civ2');
+            
+            // Update civilization 1 internal events
+            const civ1EventsDiv = document.getElementById('civ1-internal-events');
+            civ1EventsDiv.innerHTML = '';
+            
+            // Get last 5 events for civ1
+            const recentCiv1Events = civ1Events.slice(-5).reverse();
+            recentCiv1Events.forEach(event => {
+                const eventDiv = document.createElement('div');
+                eventDiv.className = 'internal-event-item';
+                
+                let eventHTML = `<div class="turn">Turn ${event.turn}</div>`;
+                eventHTML += `<div class="event-name">${event.event_name}</div>`;
+                eventHTML += `<div class="description">${event.event_description}</div>`;
+                eventHTML += `<div class="decision">Decision: ${event.decision_name} - ${event.decision_description}</div>`;
+                
+                // Display effects if any
+                if (event.effects && event.effects.length > 0) {
+                    eventHTML += '<div>Effects:';
+                    eventHTML += '<ul>';
+                    event.effects.forEach(effect => {
+                        eventHTML += `<li>${effect.type}: ${effect.resource} ${effect.change} (${effect.duration} turns)</li>`;
+                    });
+                    eventHTML += '</ul></div>';
+                }
+                
+                eventHTML += `<div>Result: ${event.result}</div>`;
+                
+                eventDiv.innerHTML = eventHTML;
+                civ1EventsDiv.appendChild(eventDiv);
+            });
+            
+            // Update civilization 2 internal events
+            const civ2EventsDiv = document.getElementById('civ2-internal-events');
+            civ2EventsDiv.innerHTML = '';
+            
+            // Get last 5 events for civ2
+            const recentCiv2Events = civ2Events.slice(-5).reverse();
+            recentCiv2Events.forEach(event => {
+                const eventDiv = document.createElement('div');
+                eventDiv.className = 'internal-event-item';
+                
+                let eventHTML = `<div class="turn">Turn ${event.turn}</div>`;
+                eventHTML += `<div class="event-name">${event.event_name}</div>`;
+                eventHTML += `<div class="description">${event.event_description}</div>`;
+                eventHTML += `<div class="decision">Decision: ${event.decision_name} - ${event.decision_description}</div>`;
+                
+                // Display effects if any
+                if (event.effects && event.effects.length > 0) {
+                    eventHTML += '<div>Effects:';
+                    eventHTML += '<ul>';
+                    event.effects.forEach(effect => {
+                        eventHTML += `<li>${effect.type}: ${effect.resource} ${effect.change} (${effect.duration} turns)</li>`;
+                    });
+                    eventHTML += '</ul></div>';
+                }
+                
+                eventHTML += `<div>Result: ${event.result}</div>`;
+                
+                eventDiv.innerHTML = eventHTML;
+                civ2EventsDiv.appendChild(eventDiv);
+            });
         }
         
         // Update game state every 2 seconds
@@ -973,19 +1180,14 @@ def update_game_state():
 # Function to run the game in a separate thread
 def run_game():
     global game
-    game = CivilizationGame()
+    # Pass correct model parameters to CivilizationGame
+    game = CivilizationGame(model_name1="qwen-flash", model_name2="abab6.5g-chat", model_type1="aliyun", model_type2="minimax")
     
     # Add game ended flag to the game object
     game.game_ended = False
     game.reason = ""
     
-    # Ensure model_info, action_history, and diplomacy_history are initialized
-    if not hasattr(game, 'model_info'):
-        game.model_info = {
-            "civ1": "qwen-flash",
-            "civ2": "qwen-plus"
-        }
-    
+    # Ensure action_history, and diplomacy_history are initialized
     if not hasattr(game, 'action_history'):
         game.action_history = {
             "civ1": [],

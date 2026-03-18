@@ -30,7 +30,10 @@ class AIController:
             self.endpoint = "https://dashscope.aliyuncs.com/api/v1/services/aigc/text-generation/generation"
         elif self.model_type == "minimax":
             self.api_key = config.get("minimax_api_key")
-            self.endpoint = "https://api.minimax.chat/v1/text/chatcompletion"
+            self.endpoint = "https://api.minimax.chat/v1/chat/completions"
+            # MiniMax API requires the API key to be prefixed with "Bearer "
+            if self.api_key and not self.api_key.startswith("Bearer "):
+                self.api_key = f"Bearer {self.api_key}"
         else:
             # Default to aliyun if model_type is unknown
             self.model_type = "aliyun"
@@ -181,7 +184,7 @@ Your Decision:
                 }
                 
                 headers = {
-                    "Authorization": f"Bearer {self.api_key}",
+                    "Authorization": self.api_key,
                     "Content-Type": "application/json"
                 }
             else:
@@ -197,12 +200,13 @@ Your Decision:
                 headers=headers
             )
             
-            # Send request with timeout
-            with urllib.request.urlopen(req, timeout=10) as response:
+            # Send request with timeout - increased to 20s for MiniMax API
+            with urllib.request.urlopen(req, timeout=20) as response:
                 response_text_raw = response.read().decode('utf-8')
                 response_data = json.loads(response_text_raw)
             
             # Parse response based on model_type
+            response_text = ""
             if self.model_type == "aliyun":
                 # Check if response has output field (success)
                 if "output" in response_data:
@@ -214,8 +218,14 @@ Your Decision:
             elif self.model_type == "minimax":
                 # Check if response has choices field (success)
                 if "choices" in response_data:
-                    response_text = response_data.get("choices", [{}])[0].get("message", {}).get("content", "")
-                else:
+                    choices = response_data.get("choices", [])
+                    if choices and isinstance(choices, list):
+                        # Get first choice with safety checks
+                        first_choice = choices[0] if choices[0] is not None else {}
+                        message = first_choice.get("message", {})
+                        response_text = message.get("content", "")
+                
+                if not response_text:
                     # Handle error case
                     error_msg = response_data.get("error", {}).get("message", f"Unknown error. Response: {response_text_raw}")
                     raise Exception(f"MiniMax API error: {error_msg}")
@@ -255,6 +265,22 @@ Your Decision:
             dict: Dictionary containing diplomacy decisions
         """
         prompt = self._build_diplomacy_prompt(civ_state, opponent_state, turn_number, wars_initiated)
+        
+        # Initialize default diplomacy decision to avoid UnboundLocalError
+        diplomacy_decision = {
+            "trade": False,
+            "war": False,
+            "trade_offer": {
+                "resources": 0,
+                "population": 0,
+                "technology": 0
+            },
+            "trade_request": {
+                "resources": 0,
+                "population": 0,
+                "technology": 0
+            }
+        }
 
         try:
             # Build payload based on model_type
@@ -290,7 +316,7 @@ Your Decision:
                 }
                 
                 headers = {
-                    "Authorization": f"Bearer {self.api_key}",
+                    "Authorization": self.api_key,
                     "Content-Type": "application/json"
                 }
             else:
@@ -306,12 +332,13 @@ Your Decision:
                 headers=headers
             )
             
-            # Send request with timeout
-            with urllib.request.urlopen(req, timeout=10) as response:
+            # Send request with timeout - increased to 20s for MiniMax API
+            with urllib.request.urlopen(req, timeout=20) as response:
                 response_text_raw = response.read().decode('utf-8')
                 response_data = json.loads(response_text_raw)
             
             # Parse response based on model_type
+            response_text = ""
             if self.model_type == "aliyun":
                 # Check if response has output field (success)
                 if "output" in response_data:
@@ -323,8 +350,14 @@ Your Decision:
             elif self.model_type == "minimax":
                 # Check if response has choices field (success)
                 if "choices" in response_data:
-                    response_text = response_data.get("choices", [{}])[0].get("message", {}).get("content", "")
-                else:
+                    choices = response_data.get("choices", [])
+                    if choices and isinstance(choices, list):
+                        # Get first choice with safety checks
+                        first_choice = choices[0] if choices[0] is not None else {}
+                        message = first_choice.get("message", {})
+                        response_text = message.get("content", "")
+                
+                if not response_text:
                     # Handle error case
                     error_msg = response_data.get("error", {}).get("message", f"Unknown error. Response: {response_text_raw}")
                     raise Exception(f"MiniMax API error: {error_msg}")
@@ -502,7 +535,7 @@ Your Decision:
                 }
                 
                 headers = {
-                    "Authorization": f"Bearer {self.api_key}",
+                    "Authorization": self.api_key,
                     "Content-Type": "application/json"
                 }
             else:
@@ -518,12 +551,13 @@ Your Decision:
                 headers=headers
             )
             
-            # Send request with timeout
-            with urllib.request.urlopen(req, timeout=10) as response:
+            # Send request with timeout - increased to 20s for MiniMax API
+            with urllib.request.urlopen(req, timeout=20) as response:
                 response_text_raw = response.read().decode('utf-8')
                 response_data = json.loads(response_text_raw)
             
             # Parse response based on model_type
+            response_text = ""
             if self.model_type == "aliyun":
                 # Check if response has output field (success)
                 if "output" in response_data:
@@ -535,8 +569,14 @@ Your Decision:
             elif self.model_type == "minimax":
                 # Check if response has choices field (success)
                 if "choices" in response_data:
-                    response_text = response_data.get("choices", [{}])[0].get("message", {}).get("content", "")
-                else:
+                    choices = response_data.get("choices", [])
+                    if choices and isinstance(choices, list):
+                        # Get first choice with safety checks
+                        first_choice = choices[0] if choices[0] is not None else {}
+                        message = first_choice.get("message", {})
+                        response_text = message.get("content", "")
+                
+                if not response_text:
                     # Handle error case
                     error_msg = response_data.get("error", {}).get("message", f"Unknown error. Response: {response_text_raw}")
                     raise Exception(f"MiniMax API error: {error_msg}")

@@ -1016,5 +1016,5 @@ class CivilizationGame:
         print("="*60)
 
 if __name__ == "__main__":
-    game = CivilizationGame()
+    game = CivilizationGame(model_name2="MiniMax-M2.5", model_type2="minimax")
     game.run()

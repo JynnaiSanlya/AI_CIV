@@ -5,8 +5,12 @@
 
 ## 功能特点
 - 两个AI文明相互竞争发展
-- 支持阿里云百炼qwen-flash和qwen-plus模型
+- 支持多API提供商：阿里云百炼（qwen-flash、qwen-plus）和MiniMax API
 - 模拟文明的多个维度：资源、人口、军队、科技、忠诚度、文化
+- **内部事件系统**：随机发生的文明内部事件，AI需做出决策
+  - 4种不同类型的内部事件
+  - 支持即时和持续多回合效果
+  - 每文明独立的事件历史记录
 - **Web图形界面**：实时可视化文明发展（http://localhost:8000）
   - 显示文明每一回合采取的行动
   - 显示每个文明使用的AI模型
@@ -14,6 +18,8 @@
   - 文明旗帜区分
   - 资源图标改进
   - 不同时代的文明图像
+  - 可折叠的UI部分，优化显示空间
+  - 每个文明独立的内部事件历史
 - **行动点系统**：每回合5点基础行动点，每进入新时代+1点
 - **文明间交互**：贸易、战争、文化影响
 - **外交系统**：支持文明间的贸易和战争
@@ -97,6 +103,24 @@ python web_gui.py
   - 文化低的文明：忠诚度下降
   - 文化高的文明：吸收少量人口（最多2人/回合）
 
+### 内部事件系统
+
+#### 事件类型
+1. **民间好战之风**：民间出现好战风气，AI需选择鼓励或打压
+2. **本国新发明**：科学家发明新技术，AI需选择支持或商业化
+3. **本国文化运动**：文化运动兴起，AI需选择支持新文化或维护传统
+4. **发现大量资源**：发现资源，AI需选择放任民间开发或收归国有
+
+#### 事件效果
+- **即时效果**：立即生效的效果（如获得资源、科技等）
+- **持续效果**：持续多个回合的效果（如资源增长加速、忠诚度变化等）
+- **效果时长**：最长不超过5回合
+
+#### 事件决策
+- AI需根据当前文明状态和事件详情做出决策
+- 决策会影响文明的发展轨迹
+- 每个决策都有不同的风险和收益
+
 ### 资源收集动态上限
 - 基于人口和科技的动态上限
 - 公式：`max(1, population // 10 + technology * 2)`
@@ -115,7 +139,8 @@ python web_gui.py
     "anthropic_api_key": "your_anthropic_api_key_here",
     "openai_api_key": "your_openai_api_key_here",
     "aliyun_api_key": "your_aliyun_api_key_here",
-    "aliyun_api_secret": "your_aliyun_api_secret_here"
+    "aliyun_api_secret": "your_aliyun_api_secret_here",
+    "minimax_api_key": "your_minimax_api_key_here"
 }
 ```
 
@@ -133,6 +158,25 @@ python web_gui.py
 game = CivilizationGame(
     model_name1="qwen-flash",
     model_name2="qwen-plus"
+)
+```
+
+## 使用MiniMax API
+
+### 配置MiniMax API密钥
+1. 登录MiniMax控制台，获取API密钥
+2. 在`config.json`中填写`minimax_api_key`
+
+### 使用MiniMax模型
+要使用MiniMax API，需要在初始化`CivilizationGame`时指定`model_type`参数：
+
+```python
+# 混合配置（一个阿里云模型，一个MiniMax模型）
+game = CivilizationGame(
+    model_name1="qwen-flash",
+    model_type1="aliyun",
+    model_name2="abab6.5s-chat",
+    model_type2="minimax"
 )
 ```
 
@@ -168,6 +212,40 @@ game = CivilizationGame(
 - 前端使用HTML、CSS和JavaScript实现动态界面
 
 ## 近期更新
+
+### 版本 0.3.0
+- **内部事件系统**：
+  - 4种新的文明内部事件：民间好战之风、本国新发明、本国文化运动、发现大量资源
+  - 支持即时和持续多回合效果（最长5回合）
+  - 内置冷却时间，防止事件过于频繁
+  - 每个文明独立的事件历史记录
+  - Web UI中展示每个文明的事件历史
+
+- **多API提供商支持**：
+  - 新增MiniMax API支持，除了阿里云百炼模型外
+  - 可以为每个AI指定不同的API提供商
+  - 自动API密钥管理，从配置文件读取
+  - 标准化的API响应处理
+  - 添加了10秒超时机制，防止程序卡死
+
+- **Web界面改进**：
+  - 可折叠的UI部分，优化显示空间
+  - 每个文明独立的内部事件历史显示
+  - 改进的响应式设计，更好的移动设备支持
+  - 美观的事件卡片设计
+
+- **AI决策改进**：
+  - 新增内部事件决策方法
+  - 事件专用提示词，包含事件详情和决策指导
+  - 支持不同API的提示词格式
+  - 统一的响应解析
+
+- **代码架构改进**：
+  - 模块化设计，分离AI控制器和游戏逻辑
+  - 清晰的事件系统架构，易于扩展
+  - 统一的效果处理机制
+  - 增强的错误处理机制
+  - 完善的日志记录
 
 ### 版本 0.2.2
 - **AI决策改进**：
@@ -259,6 +337,7 @@ MIT License
 
 完整的版本更新公告请查看 `announcements` 文件夹：
 
+- [0.3.0版本更新](announcements/0.3.0.md) (2026-03-18)
 - [0.2.2版本更新](announcements/0.2.2.md) (2026-03-15)
 - [0.2.1版本更新](announcements/0.2.1.md) (2026-03-14)
 - [0.2.0版本更新](announcements/0.2.0.md) (2026-03-14)
